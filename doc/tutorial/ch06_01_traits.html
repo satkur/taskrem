@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>6.1 トレイト - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>6.1 トレイト（インターフェース相当）</h1>
+
+<h2>C++/Kotlinとの比較</h2>
+<table border="1" cellpadding="5">
+<tr><th>概念</th><th>C++</th><th>Kotlin</th><th>Rust</th></tr>
+<tr><td>インターフェース</td><td>純粋仮想クラス</td><td>interface</td><td>trait</td></tr>
+<tr><td>デフォルト実装</td><td>仮想関数</td><td>interface内で実装</td><td>trait内で実装</td></tr>
+<tr><td>型制約</td><td>concepts (C++20)</td><td>where T: Interface</td><td>T: Trait</td></tr>
+</table>
+
+<h2>トレイトの定義</h2>
+<pre>
+// トレイトの定義（Kotlinのinterfaceに相当）
+trait Summary {
+    fn summarize(&amp;self) -&gt; String;
+}
+</pre>
+
+<h2>トレイトの実装</h2>
+<pre>
+struct NewsArticle {
+    headline: String,
+    author: String,
+    content: String,
+}
+
+struct Tweet {
+    username: String,
+    content: String,
+}
+
+// NewsArticleにSummaryを実装
+impl Summary for NewsArticle {
+    fn summarize(&amp;self) -&gt; String {
+        format!("{} by {}", self.headline, self.author)
+    }
+}
+
+// TweetにSummaryを実装
+impl Summary for Tweet {
+    fn summarize(&amp;self) -&gt; String {
+        format!("@{}: {}", self.username, self.content)
+    }
+}
+
+fn main() {
+    let article = NewsArticle {
+        headline: String::from("Breaking News"),
+        author: String::from("Taro"),
+        content: String::from("..."),
+    };
+
+    let tweet = Tweet {
+        username: String::from("rust_lang"),
+        content: String::from("Hello, Rust!"),
+    };
+
+    println!("{}", article.summarize());
+    println!("{}", tweet.summarize());
+}
+</pre>
+
+<h2>デフォルト実装</h2>
+<pre>
+trait Summary {
+    fn summarize_author(&amp;self) -&gt; String;
+
+    // デフォルト実装
+    fn summarize(&amp;self) -&gt; String {
+        format!("(Read more from {}...)", self.summarize_author())
+    }
+}
+
+struct Tweet {
+    username: String,
+    content: String,
+}
+
+impl Summary for Tweet {
+    // summarize_authorだけ実装、summarizeはデフォルトを使用
+    fn summarize_author(&amp;self) -&gt; String {
+        format!("@{}", self.username)
+    }
+}
+
+fn main() {
+    let tweet = Tweet {
+        username: String::from("rust_lang"),
+        content: String::from("Hello!"),
+    };
+    println!("{}", tweet.summarize());  // (Read more from @rust_lang...)
+}
+</pre>
+
+<h2>トレイトを引数にする</h2>
+<pre>
+// 方法1: impl Trait構文（シンプル）
+fn notify(item: &amp;impl Summary) {
+    println!("Breaking news! {}", item.summarize());
+}
+
+// 方法2: トレイト境界（より柔軟）
+fn notify_bound&lt;T: Summary&gt;(item: &amp;T) {
+    println!("Breaking news! {}", item.summarize());
+}
+
+// 複数の引数が同じ型の場合
+fn notify_same&lt;T: Summary&gt;(item1: &amp;T, item2: &amp;T) {
+    // item1とitem2は同じ型
+}
+
+// 異なる型でもOKな場合
+fn notify_diff(item1: &amp;impl Summary, item2: &amp;impl Summary) {
+    // item1とitem2は異なる型でもOK
+}
+</pre>
+
+<h2>複数のトレイト境界</h2>
+<pre>
+use std::fmt::{Display, Debug};
+
+// +で複数のトレイトを要求
+fn notify(item: &amp;(impl Summary + Display)) {
+    println!("{}", item.summarize());
+}
+
+// トレイト境界構文
+fn notify2&lt;T: Summary + Display&gt;(item: &amp;T) {
+    println!("{}", item.summarize());
+}
+
+// where句（複雑な境界の場合に読みやすい）
+fn some_function&lt;T, U&gt;(t: &amp;T, u: &amp;U) -&gt; i32
+where
+    T: Display + Clone,
+    U: Clone + Debug,
+{
+    0
+}
+</pre>
+
+<h2>トレイトを戻り値にする</h2>
+<pre>
+fn returns_summarizable() -&gt; impl Summary {
+    Tweet {
+        username: String::from("rust_lang"),
+        content: String::from("Hello!"),
+    }
+}
+
+// 注意: 条件分岐で異なる型を返すことはできない
+// fn returns_summarizable(switch: bool) -&gt; impl Summary {
+//     if switch {
+//         NewsArticle { ... }  // エラー
+//     } else {
+//         Tweet { ... }
+//     }
+// }
+</pre>
+
+<h2>標準ライブラリのトレイト</h2>
+<pre>
+use std::fmt::{Display, Debug};
+
+#[derive(Debug, Clone, PartialEq)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+// Displayを手動実装
+impl Display for Point {
+    fn fmt(&amp;self, f: &amp;mut std::fmt::Formatter&lt;'_&gt;) -&gt; std::fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
+
+fn main() {
+    let p = Point { x: 1, y: 2 };
+
+    println!("{:?}", p);  // Debug: Point { x: 1, y: 2 }
+    println!("{}", p);    // Display: (1, 2)
+
+    let p2 = p.clone();   // Clone
+    println!("{}", p == p2);  // PartialEq: true
+}
+</pre>
+
+<h2>よく使うderiveマクロ</h2>
+<ul>
+    <li><code>Debug</code>: {:?}でデバッグ出力</li>
+    <li><code>Clone</code>: .clone()でディープコピー</li>
+    <li><code>Copy</code>: 代入時にコピー（Cloneも必要）</li>
+    <li><code>PartialEq</code>: ==で比較</li>
+    <li><code>Eq</code>: 完全な等価性（PartialEqも必要）</li>
+    <li><code>PartialOrd</code>: &lt;, &gt;で比較</li>
+    <li><code>Ord</code>: 完全な順序（PartialOrdも必要）</li>
+    <li><code>Hash</code>: HashMapのキーに使用可能</li>
+    <li><code>Default</code>: デフォルト値を生成</li>
+</ul>
+
+<h2>Defaultトレイト</h2>
+<pre>
+#[derive(Debug, Default)]
+struct Config {
+    debug: bool,
+    verbose: bool,
+    timeout: u32,
+}
+
+fn main() {
+    // Defaultでデフォルト値を生成
+    let config = Config::default();
+    println!("{:?}", config);  // Config { debug: false, verbose: false, timeout: 0 }
+
+    // 一部だけ変更
+    let config2 = Config {
+        debug: true,
+        ..Default::default()
+    };
+    println!("{:?}", config2);
+}
+</pre>
+
+<h2>エクササイズ 6.1</h2>
+<ol>
+    <li>Areaトレイト（fn area(&amp;self) -&gt; f64）を定義し、Rectangle, Circle構造体に実装</li>
+    <li>Areaを実装した任意の型の面積を出力する関数を作成</li>
+    <li>Debug, Clone, PartialEqをderiveした構造体を作成し、各機能を使用</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+// 1 &amp; 2. Areaトレイト
+trait Area {
+    fn area(&amp;self) -&gt; f64;
+}
+
+struct Rectangle {
+    width: f64,
+    height: f64,
+}
+
+struct Circle {
+    radius: f64,
+}
+
+impl Area for Rectangle {
+    fn area(&amp;self) -&gt; f64 {
+        self.width * self.height
+    }
+}
+
+impl Area for Circle {
+    fn area(&amp;self) -&gt; f64 {
+        std::f64::consts::PI * self.radius * self.radius
+    }
+}
+
+fn print_area(shape: &amp;impl Area) {
+    println!("Area: {:.2}", shape.area());
+}
+
+fn main() {
+    let rect = Rectangle { width: 10.0, height: 5.0 };
+    let circle = Circle { radius: 3.0 };
+
+    print_area(&amp;rect);    // Area: 50.00
+    print_area(&amp;circle);  // Area: 28.27
+}
+
+// 3. derive
+#[derive(Debug, Clone, PartialEq)]
+struct Person {
+    name: String,
+    age: u32,
+}
+
+fn main() {
+    let p1 = Person {
+        name: String::from("Taro"),
+        age: 25,
+    };
+
+    // Debug
+    println!("{:?}", p1);
+
+    // Clone
+    let p2 = p1.clone();
+
+    // PartialEq
+    println!("p1 == p2: {}", p1 == p2);  // true
+
+    let p3 = Person {
+        name: String::from("Jiro"),
+        age: 30,
+    };
+    println!("p1 == p3: {}", p1 == p3);  // false
+}
+</pre>
+
+<hr>
+<p><a href="ch05_04_patterns.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch06_02_generics.html">次へ: 6.2 ジェネリクス &gt;&gt;</a></p>
+</body>
+</html>

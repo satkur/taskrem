@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>3.4 HashMap - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>3.4 HashMap</h1>
+
+<h2>C++/Kotlinとの比較</h2>
+<table border="1" cellpadding="5">
+<tr><th>C++</th><th>Kotlin</th><th>Rust</th></tr>
+<tr><td>std::unordered_map</td><td>MutableMap / HashMap</td><td>HashMap</td></tr>
+</table>
+
+<h2>基本的な使い方</h2>
+<pre>
+use std::collections::HashMap;
+
+fn main() {
+    // 空のHashMapを作成
+    let mut scores: HashMap&lt;String, i32&gt; = HashMap::new();
+
+    // 要素の追加
+    scores.insert(String::from("Blue"), 10);
+    scores.insert(String::from("Red"), 50);
+
+    // 要素の取得（Optionを返す）
+    let blue_score = scores.get("Blue");
+    match blue_score {
+        Some(score) =&gt; println!("Blue: {}", score),
+        None =&gt; println!("Blue not found"),
+    }
+
+    // または
+    if let Some(score) = scores.get("Red") {
+        println!("Red: {}", score);
+    }
+
+    println!("{:?}", scores);
+}
+</pre>
+
+<h2>初期値付きで作成</h2>
+<pre>
+use std::collections::HashMap;
+
+fn main() {
+    // fromで作成
+    let scores = HashMap::from([
+        (String::from("Blue"), 10),
+        (String::from("Red"), 50),
+    ]);
+
+    // イテレータから作成
+    let teams = vec!["Blue", "Red"];
+    let initial_scores = vec![10, 50];
+    let scores2: HashMap&lt;&amp;str, i32&gt; = teams.into_iter()
+        .zip(initial_scores.into_iter())
+        .collect();
+
+    println!("{:?}", scores);
+    println!("{:?}", scores2);
+}
+</pre>
+
+<h2>要素の更新</h2>
+<pre>
+use std::collections::HashMap;
+
+fn main() {
+    let mut scores = HashMap::new();
+    scores.insert("Blue", 10);
+
+    // 上書き
+    scores.insert("Blue", 25);
+    println!("{:?}", scores);  // {"Blue": 25}
+
+    // キーが存在しない場合のみ挿入
+    scores.entry("Blue").or_insert(50);  // 既に存在するので何もしない
+    scores.entry("Yellow").or_insert(50);  // 存在しないので挿入
+    println!("{:?}", scores);
+
+    // 既存の値を更新
+    let count = scores.entry("Blue").or_insert(0);
+    *count += 1;
+    println!("{:?}", scores);
+}
+</pre>
+
+<h2>イテレーション</h2>
+<pre>
+use std::collections::HashMap;
+
+fn main() {
+    let scores = HashMap::from([
+        ("Blue", 10),
+        ("Red", 50),
+        ("Yellow", 30),
+    ]);
+
+    // キーと値
+    for (key, value) in &amp;scores {
+        println!("{}: {}", key, value);
+    }
+
+    // キーのみ
+    for key in scores.keys() {
+        println!("key: {}", key);
+    }
+
+    // 値のみ
+    for value in scores.values() {
+        println!("value: {}", value);
+    }
+
+    // 可変参照でイテレーション
+    let mut scores2 = HashMap::from([("a", 1), ("b", 2)]);
+    for value in scores2.values_mut() {
+        *value *= 2;
+    }
+    println!("{:?}", scores2);
+}
+</pre>
+
+<h2>要素の削除</h2>
+<pre>
+use std::collections::HashMap;
+
+fn main() {
+    let mut scores = HashMap::from([
+        ("Blue", 10),
+        ("Red", 50),
+    ]);
+
+    // 削除（削除した値を返す）
+    let removed = scores.remove("Blue");
+    println!("removed: {:?}", removed);  // Some(10)
+    println!("{:?}", scores);
+
+    // クリア
+    scores.clear();
+    println!("after clear: {:?}", scores);
+}
+</pre>
+
+<h2>便利なメソッド</h2>
+<pre>
+use std::collections::HashMap;
+
+fn main() {
+    let scores = HashMap::from([
+        ("Blue", 10),
+        ("Red", 50),
+    ]);
+
+    // 要素数
+    println!("len: {}", scores.len());
+
+    // 空かどうか
+    println!("is_empty: {}", scores.is_empty());
+
+    // キーが存在するか
+    println!("contains Blue: {}", scores.contains_key("Blue"));
+    println!("contains Green: {}", scores.contains_key("Green"));
+}
+</pre>
+
+<h2>単語の出現回数カウント（典型的な使用例）</h2>
+<pre>
+use std::collections::HashMap;
+
+fn main() {
+    let text = "hello world hello rust world world";
+
+    let mut word_count: HashMap&lt;&amp;str, i32&gt; = HashMap::new();
+
+    for word in text.split_whitespace() {
+        let count = word_count.entry(word).or_insert(0);
+        *count += 1;
+    }
+
+    println!("{:?}", word_count);
+    // {"hello": 2, "world": 3, "rust": 1}
+
+    // 最も出現回数の多い単語
+    if let Some((word, count)) = word_count.iter().max_by_key(|&amp;(_, count)| count) {
+        println!("Most common: {} ({} times)", word, count);
+    }
+}
+</pre>
+
+<h2>カスタム型をキーにする</h2>
+<pre>
+use std::collections::HashMap;
+
+// HashMapのキーにするには、Eq, PartialEq, Hashが必要
+#[derive(Debug, Eq, PartialEq, Hash)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+fn main() {
+    let mut map: HashMap&lt;Point, &amp;str&gt; = HashMap::new();
+
+    map.insert(Point { x: 0, y: 0 }, "origin");
+    map.insert(Point { x: 1, y: 0 }, "right");
+
+    println!("{:?}", map.get(&amp;Point { x: 0, y: 0 }));
+}
+</pre>
+
+<h2>エクササイズ 3.4</h2>
+<ol>
+    <li>文字列を受け取り、各文字の出現回数をHashMapで返す関数を作成</li>
+    <li>2つのHashMapをマージする関数を作成（同じキーがあれば値を加算）</li>
+    <li>学生の名前と点数のHashMapから、平均点を計算する</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+use std::collections::HashMap;
+
+fn char_count(s: &amp;str) -&gt; HashMap&lt;char, i32&gt; {
+    let mut counts = HashMap::new();
+    for c in s.chars() {
+        *counts.entry(c).or_insert(0) += 1;
+    }
+    counts
+}
+
+fn merge_maps(map1: &amp;HashMap&lt;&amp;str, i32&gt;, map2: &amp;HashMap&lt;&amp;str, i32&gt;) -&gt; HashMap&lt;&amp;str, i32&gt; {
+    let mut result = map1.clone();
+    for (&amp;key, &amp;value) in map2 {
+        *result.entry(key).or_insert(0) += value;
+    }
+    result
+}
+
+fn average_score(scores: &amp;HashMap&lt;&amp;str, i32&gt;) -&gt; f64 {
+    if scores.is_empty() {
+        return 0.0;
+    }
+    let sum: i32 = scores.values().sum();
+    sum as f64 / scores.len() as f64
+}
+
+fn main() {
+    // 1. 文字カウント
+    let counts = char_count("hello");
+    println!("{:?}", counts);  // {'h': 1, 'e': 1, 'l': 2, 'o': 1}
+
+    // 2. マージ
+    let map1 = HashMap::from([("a", 1), ("b", 2)]);
+    let map2 = HashMap::from([("b", 3), ("c", 4)]);
+    let merged = merge_maps(&amp;map1, &amp;map2);
+    println!("{:?}", merged);  // {"a": 1, "b": 5, "c": 4}
+
+    // 3. 平均点
+    let scores = HashMap::from([
+        ("Alice", 85),
+        ("Bob", 90),
+        ("Charlie", 78),
+    ]);
+    println!("Average: {:.2}", average_score(&amp;scores));  // 84.33
+}
+</pre>
+
+<hr>
+<p><a href="ch03_03_strings.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch04_01_ownership.html">次へ: 4.1 所有権の基本 &gt;&gt;</a></p>
+</body>
+</html>

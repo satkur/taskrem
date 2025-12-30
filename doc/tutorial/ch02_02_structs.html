@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>2.2 構造体（struct） - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>2.2 構造体（struct）</h1>
+
+<h2>C++/Kotlinとの比較</h2>
+<table border="1" cellpadding="5">
+<tr><th>C++</th><th>Kotlin</th><th>Rust</th></tr>
+<tr>
+<td><pre>
+class Point {
+public:
+    int x;
+    int y;
+};
+</pre></td>
+<td><pre>
+data class Point(
+    val x: Int,
+    val y: Int
+)
+</pre></td>
+<td><pre>
+struct Point {
+    x: i32,
+    y: i32,
+}
+</pre></td>
+</tr>
+</table>
+
+<h2>基本的な構造体</h2>
+<pre>
+// 構造体の定義
+struct User {
+    username: String,
+    email: String,
+    age: u32,
+    active: bool,
+}
+
+fn main() {
+    // インスタンス作成
+    let user1 = User {
+        username: String::from("taro"),
+        email: String::from("taro@example.com"),
+        age: 25,
+        active: true,
+    };
+
+    // フィールドアクセス
+    println!("name: {}", user1.username);
+    println!("age: {}", user1.age);
+}
+</pre>
+
+<h2>可変な構造体</h2>
+<pre>
+fn main() {
+    // 構造体全体をmutにする（一部だけmutにはできない）
+    let mut user = User {
+        username: String::from("taro"),
+        email: String::from("taro@example.com"),
+        age: 25,
+        active: true,
+    };
+
+    user.age = 26;  // フィールドを変更
+    println!("age: {}", user.age);
+}
+</pre>
+
+<h2>フィールド初期化省略記法</h2>
+<pre>
+fn build_user(username: String, email: String) -&gt; User {
+    User {
+        username,       // username: username と同じ
+        email,          // email: email と同じ
+        age: 0,
+        active: true,
+    }
+}
+</pre>
+
+<h2>構造体更新構文</h2>
+<pre>
+fn main() {
+    let user1 = User {
+        username: String::from("taro"),
+        email: String::from("taro@example.com"),
+        age: 25,
+        active: true,
+    };
+
+    // user1をベースに一部変更した新しいインスタンス
+    let user2 = User {
+        email: String::from("jiro@example.com"),
+        ..user1  // 残りはuser1からコピー
+    };
+    // 注意: user1.usernameの所有権はuser2に移動
+
+    println!("user2: {}", user2.username);
+}
+</pre>
+
+<h2>タプル構造体</h2>
+<pre>
+// 名前付きタプルのような構造体
+struct Color(u8, u8, u8);
+struct Point3D(f64, f64, f64);
+
+fn main() {
+    let black = Color(0, 0, 0);
+    let origin = Point3D(0.0, 0.0, 0.0);
+
+    // インデックスでアクセス
+    println!("R: {}", black.0);
+    println!("x: {}", origin.0);
+
+    // 分解も可能
+    let Color(r, g, b) = black;
+    println!("RGB: {}, {}, {}", r, g, b);
+}
+</pre>
+
+<h2>ユニット様構造体</h2>
+<pre>
+// フィールドを持たない構造体（マーカーとして使用）
+struct AlwaysEqual;
+
+fn main() {
+    let _subject = AlwaysEqual;
+}
+</pre>
+
+<h2>デバッグ出力</h2>
+<pre>
+// #[derive(Debug)] で自動的にデバッグ出力を実装
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+fn main() {
+    let rect = Rectangle { width: 30, height: 50 };
+
+    // {:?} で1行表示
+    println!("rect: {:?}", rect);
+
+    // {:#?} で整形表示
+    println!("rect: {:#?}", rect);
+
+    // dbg!マクロ（式の値と場所を出力）
+    dbg!(&amp;rect);
+}
+</pre>
+
+<h2>エクササイズ 2.2</h2>
+<ol>
+    <li>本を表す構造体 <code>Book</code>（title, author, pages, is_read）を定義し、インスタンスを作成して出力</li>
+    <li>RGB色を表すタプル構造体を作成し、赤と青の色を定義</li>
+    <li><code>#[derive(Debug)]</code> を使って構造体をデバッグ出力</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+#[derive(Debug)]
+struct Book {
+    title: String,
+    author: String,
+    pages: u32,
+    is_read: bool,
+}
+
+struct RGB(u8, u8, u8);
+
+fn main() {
+    // 1. Book構造体
+    let book = Book {
+        title: String::from("The Rust Programming Language"),
+        author: String::from("Steve Klabnik"),
+        pages: 552,
+        is_read: false,
+    };
+    println!("Title: {}", book.title);
+    println!("Author: {}", book.author);
+
+    // 2. RGB タプル構造体
+    let red = RGB(255, 0, 0);
+    let blue = RGB(0, 0, 255);
+    println!("Red: ({}, {}, {})", red.0, red.1, red.2);
+    println!("Blue: ({}, {}, {})", blue.0, blue.1, blue.2);
+
+    // 3. デバッグ出力
+    println!("{:#?}", book);
+}
+</pre>
+
+<hr>
+<p><a href="ch02_01_functions.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch02_03_impl.html">次へ: 2.3 implブロック &gt;&gt;</a></p>
+</body>
+</html>

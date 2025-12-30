@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>2.1 関数定義 - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>2.1 関数定義</h1>
+
+<h2>C++/Kotlinとの比較</h2>
+<table border="1" cellpadding="5">
+<tr><th>C++</th><th>Kotlin</th><th>Rust</th></tr>
+<tr>
+<td><pre>
+int add(int a, int b) {
+    return a + b;
+}
+</pre></td>
+<td><pre>
+fun add(a: Int, b: Int): Int {
+    return a + b
+}
+</pre></td>
+<td><pre>
+fn add(a: i32, b: i32) -&gt; i32 {
+    a + b
+}
+</pre></td>
+</tr>
+</table>
+
+<h2>基本構文</h2>
+<pre>
+// 戻り値なし
+fn greet(name: &amp;str) {
+    println!("Hello, {}!", name);
+}
+
+// 戻り値あり（-&gt; で戻り値の型を指定）
+fn add(a: i32, b: i32) -&gt; i32 {
+    a + b  // セミコロンなし = この式の値を返す
+}
+
+// returnを使う場合
+fn abs(x: i32) -&gt; i32 {
+    if x &lt; 0 {
+        return -x;  // 早期リターン
+    }
+    x  // 最後の式（セミコロンなし）
+}
+
+fn main() {
+    greet("Taro");
+    println!("2 + 3 = {}", add(2, 3));
+    println!("abs(-5) = {}", abs(-5));
+}
+</pre>
+
+<h2>重要: 式と文の違い</h2>
+<p>Rustでは「式（expression）」と「文（statement）」が明確に区別される：</p>
+<ul>
+    <li><strong>式</strong>: 値を返す（セミコロンなし）</li>
+    <li><strong>文</strong>: 値を返さない（セミコロンあり）</li>
+</ul>
+<pre>
+fn example() -&gt; i32 {
+    let x = 5;      // 文（letは値を返さない）
+
+    // ブロックも式になれる
+    let y = {
+        let a = 3;
+        a + 1       // セミコロンなし = この値を返す
+    };  // y = 4
+
+    x + y           // セミコロンなし = 関数の戻り値
+}
+
+// 間違いの例
+fn wrong() -&gt; i32 {
+    let x = 5;
+    x + 1;          // セミコロンあり = 文になる = ()を返す
+    // コンパイルエラー: expected `i32`, found `()`
+}
+</pre>
+
+<h2>参照渡し</h2>
+<pre>
+// 値渡し（所有権が移動する - 後の章で詳しく説明）
+fn print_length_owned(s: String) {
+    println!("length: {}", s.len());
+    // sはここでドロップされる
+}
+
+// 参照渡し（借用 - 所有権は移動しない）
+fn print_length(s: &amp;String) {
+    println!("length: {}", s.len());
+}
+
+// 可変参照（変更可能な借用）
+fn push_world(s: &amp;mut String) {
+    s.push_str(", World!");
+}
+
+fn main() {
+    let mut s = String::from("Hello");
+
+    print_length(&amp;s);      // 参照を渡す
+    println!("{}", s);      // sはまだ使える
+
+    push_world(&amp;mut s);    // 可変参照を渡す
+    println!("{}", s);      // "Hello, World!"
+}
+</pre>
+
+<h2>複数の戻り値（タプル）</h2>
+<pre>
+fn divide(a: i32, b: i32) -&gt; (i32, i32) {
+    (a / b, a % b)  // (商, 余り)
+}
+
+fn main() {
+    let (quotient, remainder) = divide(17, 5);
+    println!("17 / 5 = {} 余り {}", quotient, remainder);
+}
+</pre>
+
+<h2>ユニット型 ()</h2>
+<p>戻り値がない関数は暗黙的に <code>()</code>（ユニット型）を返す。C++のvoidに相当。</p>
+<pre>
+fn do_nothing() {
+    // 何もしない
+}
+
+fn do_nothing_explicit() -&gt; () {
+    // 明示的に書いても同じ
+}
+</pre>
+
+<h2>エクササイズ 2.1</h2>
+<ol>
+    <li>2つの数の最大値を返す関数 <code>max(a: i32, b: i32) -&gt; i32</code> を作成</li>
+    <li>文字列の参照を受け取り、その文字列を大文字で出力する関数を作成</li>
+    <li>2つの数を受け取り、(和, 差, 積) のタプルを返す関数を作成</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+// 1. 最大値
+fn max(a: i32, b: i32) -&gt; i32 {
+    if a &gt; b { a } else { b }
+}
+
+// 2. 大文字で出力
+fn print_uppercase(s: &amp;str) {
+    println!("{}", s.to_uppercase());
+}
+
+// 3. 和、差、積
+fn calc(a: i32, b: i32) -&gt; (i32, i32, i32) {
+    (a + b, a - b, a * b)
+}
+
+fn main() {
+    println!("max(3, 7) = {}", max(3, 7));
+
+    print_uppercase("hello");
+
+    let (sum, diff, prod) = calc(10, 3);
+    println!("sum={}, diff={}, prod={}", sum, diff, prod);
+}
+</pre>
+
+<hr>
+<p><a href="ch01_04_args.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch02_02_structs.html">次へ: 2.2 構造体 &gt;&gt;</a></p>
+</body>
+</html>

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>4.2 参照と借用 - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>4.2 参照と借用</h1>
+
+<h2>C++との比較</h2>
+<table border="1" cellpadding="5">
+<tr><th>概念</th><th>C++</th><th>Rust</th></tr>
+<tr><td>不変参照</td><td>const T&amp;</td><td>&amp;T</td></tr>
+<tr><td>可変参照</td><td>T&amp;</td><td>&amp;mut T</td></tr>
+<tr><td>ポインタ</td><td>T*</td><td>*const T / *mut T（unsafe）</td></tr>
+</table>
+
+<h2>参照（Reference）と借用（Borrowing）</h2>
+<p>所有権を移動させずに値を参照することを<strong>借用</strong>という。</p>
+<pre>
+fn calculate_length(s: &amp;String) -&gt; usize {  // &amp;Stringは参照
+    s.len()
+}  // sはスコープを抜けるが、所有権がないのでドロップされない
+
+fn main() {
+    let s = String::from("hello");
+    let len = calculate_length(&amp;s);  // &amp;sで参照を渡す（借用）
+
+    println!("'{}' has length {}", s, len);  // sはまだ使える
+}
+</pre>
+
+<h2>不変参照（Immutable Reference）</h2>
+<pre>
+fn main() {
+    let s = String::from("hello");
+
+    let r1 = &amp;s;  // OK
+    let r2 = &amp;s;  // OK: 不変参照は複数作れる
+    let r3 = &amp;s;  // OK
+
+    println!("{} {} {}", r1, r2, r3);
+
+    // 参照経由での変更はできない
+    // r1.push_str(" world");  // エラー
+}
+</pre>
+
+<h2>可変参照（Mutable Reference）</h2>
+<pre>
+fn change(s: &amp;mut String) {
+    s.push_str(", world");
+}
+
+fn main() {
+    let mut s = String::from("hello");  // mutが必要
+
+    change(&amp;mut s);  // 可変参照を渡す
+
+    println!("{}", s);  // "hello, world"
+}
+</pre>
+
+<h2>借用のルール（重要！）</h2>
+<ol>
+    <li><strong>不変参照は複数OK</strong></li>
+    <li><strong>可変参照は1つだけ</strong></li>
+    <li><strong>不変参照と可変参照は同時に存在できない</strong></li>
+</ol>
+
+<pre>
+fn main() {
+    let mut s = String::from("hello");
+
+    // 不変参照は複数OK
+    let r1 = &amp;s;
+    let r2 = &amp;s;
+    println!("{} {}", r1, r2);
+
+    // 可変参照は1つだけ
+    let r3 = &amp;mut s;
+    // let r4 = &amp;mut s;  // エラー: 可変参照は1つまで
+    println!("{}", r3);
+}
+</pre>
+
+<pre>
+fn main() {
+    let mut s = String::from("hello");
+
+    let r1 = &amp;s;  // 不変参照
+    // let r2 = &amp;mut s;  // エラー: 不変参照がある間は可変参照を作れない
+    println!("{}", r1);
+
+    // r1の使用が終わった後なら可変参照を作れる
+    let r2 = &amp;mut s;
+    r2.push_str("!");
+    println!("{}", r2);
+}
+</pre>
+
+<h2>Non-Lexical Lifetimes (NLL)</h2>
+<p>参照のスコープは「最後に使われた場所」まで。</p>
+<pre>
+fn main() {
+    let mut s = String::from("hello");
+
+    let r1 = &amp;s;
+    let r2 = &amp;s;
+    println!("{} {}", r1, r2);
+    // r1とr2はここまでで使用終了
+
+    // この時点でr1, r2のスコープは終わっているので可変参照を作れる
+    let r3 = &amp;mut s;
+    r3.push_str("!");
+    println!("{}", r3);
+}
+</pre>
+
+<h2>ダングリング参照の防止</h2>
+<p>Rustはダングリング参照（無効なメモリを指す参照）をコンパイル時に検出する。</p>
+<pre>
+// コンパイルエラー: ダングリング参照
+fn dangle() -&gt; &amp;String {
+    let s = String::from("hello");
+    &amp;s  // sの参照を返そうとしている
+}  // sはここでドロップされる → 参照は無効になる
+
+// 正しい方法: 所有権を返す
+fn no_dangle() -&gt; String {
+    let s = String::from("hello");
+    s  // 所有権を移動
+}
+</pre>
+
+<h2>スライスと借用</h2>
+<pre>
+fn first_word(s: &amp;str) -&gt; &amp;str {
+    let bytes = s.as_bytes();
+    for (i, &amp;item) in bytes.iter().enumerate() {
+        if item == b' ' {
+            return &amp;s[0..i];
+        }
+    }
+    &amp;s[..]
+}
+
+fn main() {
+    let s = String::from("hello world");
+    let word = first_word(&amp;s);
+    println!("first word: {}", word);
+
+    // s.clear();  // エラー: wordが不変借用している間はsを変更できない
+    println!("{}", word);
+}
+</pre>
+
+<h2>参照のデリファレンス</h2>
+<pre>
+fn main() {
+    let x = 5;
+    let r = &amp;x;
+
+    // *で参照を解決（デリファレンス）
+    println!("r = {}", r);   // 自動デリファレンス
+    println!("*r = {}", *r); // 明示的デリファレンス
+
+    // 可変参照の場合
+    let mut y = 10;
+    let r2 = &amp;mut y;
+    *r2 += 1;  // デリファレンスして変更
+    println!("y = {}", r2);
+}
+</pre>
+
+<h2>メソッドでの自動参照</h2>
+<pre>
+fn main() {
+    let s = String::from("hello");
+
+    // これらは全て同じ
+    println!("{}", s.len());
+    println!("{}", (&amp;s).len());
+    println!("{}", String::len(&amp;s));
+
+    // Rustは自動的に&amp;, &amp;mut, *を追加してメソッドを呼び出す
+}
+</pre>
+
+<h2>エクササイズ 4.2</h2>
+<ol>
+    <li>以下のコードのコンパイルエラーを修正してください：
+<pre>
+fn main() {
+    let mut s = String::from("hello");
+    let r1 = &amp;s;
+    let r2 = &amp;mut s;
+    println!("{} {}", r1, r2);
+}
+</pre>
+    </li>
+    <li>ベクタの最大値を参照で返す関数を作成（空の場合はNone）</li>
+    <li>可変参照を使って、ベクタの全要素を2倍にする関数を作成</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+// 1. 修正
+fn main() {
+    let mut s = String::from("hello");
+    let r1 = &amp;s;
+    println!("{}", r1);  // r1を使い終わる
+
+    let r2 = &amp;mut s;  // r1の使用後なのでOK
+    println!("{}", r2);
+}
+
+// 2. 最大値を参照で返す
+fn max_ref(v: &amp;[i32]) -&gt; Option&lt;&amp;i32&gt; {
+    if v.is_empty() {
+        return None;
+    }
+    let mut max = &amp;v[0];
+    for item in v.iter() {
+        if item &gt; max {
+            max = item;
+        }
+    }
+    Some(max)
+}
+
+fn main() {
+    let v = vec![3, 1, 4, 1, 5, 9, 2, 6];
+    if let Some(max) = max_ref(&amp;v) {
+        println!("max: {}", max);
+    }
+}
+
+// 3. 全要素を2倍
+fn double_all(v: &amp;mut Vec&lt;i32&gt;) {
+    for item in v.iter_mut() {
+        *item *= 2;
+    }
+}
+
+fn main() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    double_all(&amp;mut v);
+    println!("{:?}", v);  // [2, 4, 6, 8, 10]
+}
+</pre>
+
+<hr>
+<p><a href="ch04_01_ownership.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch04_03_lifetimes.html">次へ: 4.3 ライフタイム &gt;&gt;</a></p>
+</body>
+</html>

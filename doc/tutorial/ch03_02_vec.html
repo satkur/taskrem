@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>3.2 Vec（動的配列） - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>3.2 Vec（動的配列）</h1>
+
+<h2>C++/Kotlinとの比較</h2>
+<table border="1" cellpadding="5">
+<tr><th>C++</th><th>Kotlin</th><th>Rust</th></tr>
+<tr><td>std::vector&lt;int&gt;</td><td>MutableList&lt;Int&gt;</td><td>Vec&lt;i32&gt;</td></tr>
+</table>
+
+<h2>Vecの作成</h2>
+<pre>
+fn main() {
+    // 空のVec
+    let mut v1: Vec&lt;i32&gt; = Vec::new();
+
+    // vec!マクロで初期値付き
+    let v2 = vec![1, 2, 3, 4, 5];
+
+    // 同じ値で初期化
+    let v3 = vec![0; 10];  // [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+    // 容量を予約
+    let mut v4: Vec&lt;i32&gt; = Vec::with_capacity(100);
+
+    println!("v2: {:?}", v2);
+    println!("v3 len: {}", v3.len());
+    println!("v4 capacity: {}", v4.capacity());
+}
+</pre>
+
+<h2>要素の追加と削除</h2>
+<pre>
+fn main() {
+    let mut v = vec![1, 2, 3];
+
+    // 末尾に追加
+    v.push(4);
+    v.push(5);
+    println!("{:?}", v);  // [1, 2, 3, 4, 5]
+
+    // 末尾から取り出し
+    let last = v.pop();  // Option&lt;i32&gt;
+    println!("popped: {:?}", last);  // Some(5)
+
+    // 指定位置に挿入
+    v.insert(1, 10);
+    println!("{:?}", v);  // [1, 10, 2, 3, 4]
+
+    // 指定位置を削除
+    let removed = v.remove(1);
+    println!("removed: {}", removed);  // 10
+    println!("{:?}", v);  // [1, 2, 3, 4]
+
+    // 末尾の要素を取得（削除せず）
+    println!("last: {:?}", v.last());
+
+    // クリア
+    v.clear();
+    println!("after clear: {:?}", v);
+}
+</pre>
+
+<h2>要素へのアクセス</h2>
+<pre>
+fn main() {
+    let v = vec![1, 2, 3, 4, 5];
+
+    // インデックスアクセス（範囲外でpanic）
+    println!("v[2] = {}", v[2]);
+
+    // getメソッド（Option&lt;&amp;T&gt;を返す、安全）
+    match v.get(10) {
+        Some(val) =&gt; println!("value: {}", val),
+        None =&gt; println!("index out of bounds"),
+    }
+
+    // get_mutで可変参照を取得
+    let mut v2 = vec![1, 2, 3];
+    if let Some(elem) = v2.get_mut(1) {
+        *elem = 20;
+    }
+    println!("{:?}", v2);  // [1, 20, 3]
+}
+</pre>
+
+<h2>イテレーション</h2>
+<pre>
+fn main() {
+    let v = vec![10, 20, 30];
+
+    // 不変参照でイテレーション
+    for elem in &amp;v {
+        println!("{}", elem);
+    }
+
+    // 可変参照でイテレーション
+    let mut v2 = vec![1, 2, 3];
+    for elem in &amp;mut v2 {
+        *elem *= 2;
+    }
+    println!("{:?}", v2);  // [2, 4, 6]
+
+    // 所有権を取ってイテレーション（vは使えなくなる）
+    let v3 = vec![1, 2, 3];
+    for elem in v3 {
+        println!("{}", elem);
+    }
+    // println!("{:?}", v3);  // エラー: v3はムーブされた
+}
+</pre>
+
+<h2>便利なメソッド</h2>
+<pre>
+fn main() {
+    let v = vec![3, 1, 4, 1, 5, 9, 2, 6];
+
+    // 長さと容量
+    println!("len: {}, capacity: {}", v.len(), v.capacity());
+
+    // 空かどうか
+    println!("is_empty: {}", v.is_empty());
+
+    // 含まれているか
+    println!("contains 5: {}", v.contains(&amp;5));
+
+    // ソート
+    let mut v2 = v.clone();
+    v2.sort();
+    println!("sorted: {:?}", v2);
+
+    // 逆順ソート
+    v2.sort_by(|a, b| b.cmp(a));
+    println!("reverse sorted: {:?}", v2);
+
+    // 重複削除（ソート済みの場合）
+    let mut v3 = vec![1, 1, 2, 2, 3, 3];
+    v3.dedup();
+    println!("deduped: {:?}", v3);
+
+    // スライスへの変換
+    let slice: &amp;[i32] = &amp;v;
+    println!("as slice: {:?}", slice);
+}
+</pre>
+
+<h2>イテレータメソッド</h2>
+<pre>
+fn main() {
+    let v = vec![1, 2, 3, 4, 5];
+
+    // map: 各要素を変換
+    let doubled: Vec&lt;i32&gt; = v.iter().map(|x| x * 2).collect();
+    println!("doubled: {:?}", doubled);
+
+    // filter: 条件に合う要素だけ
+    let evens: Vec&lt;&amp;i32&gt; = v.iter().filter(|&amp;&amp;x| x % 2 == 0).collect();
+    println!("evens: {:?}", evens);
+
+    // filter + map（filter_map）
+    let result: Vec&lt;i32&gt; = v.iter()
+        .filter(|&amp;&amp;x| x % 2 == 1)
+        .map(|&amp;x| x * 10)
+        .collect();
+    println!("odd * 10: {:?}", result);
+
+    // fold: 畳み込み
+    let sum: i32 = v.iter().fold(0, |acc, &amp;x| acc + x);
+    println!("sum: {}", sum);
+
+    // any: どれか一つでも条件を満たすか
+    println!("any &gt; 3: {}", v.iter().any(|&amp;x| x &gt; 3));
+
+    // all: 全て条件を満たすか
+    println!("all &gt; 0: {}", v.iter().all(|&amp;x| x &gt; 0));
+}
+</pre>
+
+<h2>VecとStringの変換</h2>
+<pre>
+fn main() {
+    // Vec&lt;char&gt;からString
+    let chars: Vec&lt;char&gt; = vec!['H', 'e', 'l', 'l', 'o'];
+    let s: String = chars.iter().collect();
+    println!("{}", s);
+
+    // StringからVec&lt;char&gt;
+    let s2 = String::from("World");
+    let chars2: Vec&lt;char&gt; = s2.chars().collect();
+    println!("{:?}", chars2);
+}
+</pre>
+
+<h2>エクササイズ 3.2</h2>
+<ol>
+    <li>1から10までの数をVecに入れ、偶数だけを抽出した新しいVecを作成</li>
+    <li>文字列のVecを受け取り、各文字列の長さのVecを返す関数を作成</li>
+    <li>Vecの要素を全て2乗した新しいVecを作成（イテレータを使用）</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+fn string_lengths(strings: &amp;[String]) -&gt; Vec&lt;usize&gt; {
+    strings.iter().map(|s| s.len()).collect()
+}
+
+fn main() {
+    // 1. 偶数を抽出
+    let numbers: Vec&lt;i32&gt; = (1..=10).collect();
+    let evens: Vec&lt;i32&gt; = numbers.iter()
+        .filter(|&amp;&amp;x| x % 2 == 0)
+        .copied()
+        .collect();
+    println!("evens: {:?}", evens);
+
+    // 2. 文字列の長さ
+    let strings = vec![
+        String::from("Hello"),
+        String::from("Rust"),
+        String::from("World"),
+    ];
+    let lengths = string_lengths(&amp;strings);
+    println!("lengths: {:?}", lengths);
+
+    // 3. 2乗
+    let v = vec![1, 2, 3, 4, 5];
+    let squared: Vec&lt;i32&gt; = v.iter().map(|&amp;x| x * x).collect();
+    println!("squared: {:?}", squared);
+}
+</pre>
+
+<hr>
+<p><a href="ch03_01_arrays.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch03_03_strings.html">次へ: 3.3 文字列 &gt;&gt;</a></p>
+</body>
+</html>

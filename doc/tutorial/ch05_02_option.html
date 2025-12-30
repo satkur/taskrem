@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>5.2 Option型 - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>5.2 Option型</h1>
+
+<h2>Kotlinとの比較</h2>
+<table border="1" cellpadding="5">
+<tr><th>概念</th><th>Kotlin</th><th>Rust</th></tr>
+<tr><td>null許容</td><td>String?</td><td>Option&lt;String&gt;</td></tr>
+<tr><td>値あり</td><td>非null</td><td>Some(value)</td></tr>
+<tr><td>値なし</td><td>null</td><td>None</td></tr>
+<tr><td>安全なアクセス</td><td>?.</td><td>.map(), .and_then()</td></tr>
+<tr><td>デフォルト値</td><td>?:</td><td>.unwrap_or()</td></tr>
+</table>
+
+<h2>Optionの定義</h2>
+<pre>
+// 標準ライブラリの定義（参考）
+enum Option&lt;T&gt; {
+    Some(T),
+    None,
+}
+</pre>
+
+<h2>基本的な使い方</h2>
+<pre>
+fn main() {
+    let some_number: Option&lt;i32&gt; = Some(5);
+    let no_number: Option&lt;i32&gt; = None;
+
+    // 型推論
+    let some_string = Some("hello");
+
+    // Optionは直接使えない
+    // let x: i32 = some_number;  // エラー
+    // let y = some_number + 1;   // エラー
+}
+</pre>
+
+<h2>Optionから値を取り出す</h2>
+<pre>
+fn main() {
+    let x = Some(5);
+
+    // match（最も基本的）
+    match x {
+        Some(n) =&gt; println!("Value: {}", n),
+        None =&gt; println!("No value"),
+    }
+
+    // if let（1パターンだけの場合）
+    if let Some(n) = x {
+        println!("Value: {}", n);
+    }
+
+    // unwrap（Noneならpanic）
+    let n = x.unwrap();
+    println!("Value: {}", n);
+
+    // expect（panicメッセージ付き）
+    let n = x.expect("Expected a value");
+
+    // unwrap_or（デフォルト値）
+    let n = x.unwrap_or(0);
+    let y: Option&lt;i32&gt; = None;
+    println!("y = {}", y.unwrap_or(0));  // 0
+
+    // unwrap_or_else（デフォルト値をクロージャで計算）
+    let n = x.unwrap_or_else(|| {
+        println!("Computing default...");
+        42
+    });
+}
+</pre>
+
+<h2>Optionのメソッド</h2>
+<pre>
+fn main() {
+    let x = Some(5);
+    let y: Option&lt;i32&gt; = None;
+
+    // is_some / is_none
+    println!("x.is_some() = {}", x.is_some());  // true
+    println!("y.is_none() = {}", y.is_none());  // true
+
+    // map: 値がある場合に変換
+    let doubled = x.map(|n| n * 2);
+    println!("doubled = {:?}", doubled);  // Some(10)
+    let doubled_none = y.map(|n| n * 2);
+    println!("doubled_none = {:?}", doubled_none);  // None
+
+    // filter: 条件を満たさなければNone
+    let even = x.filter(|&amp;n| n % 2 == 0);
+    println!("even = {:?}", even);  // None（5は偶数ではない）
+
+    // and_then（flatMapに相当）: Optionを返す関数をチェーン
+    let result = x.and_then(|n| {
+        if n &gt; 0 { Some(n * 2) } else { None }
+    });
+    println!("result = {:?}", result);  // Some(10)
+
+    // or / or_else: Noneの場合の代替
+    let z = y.or(Some(100));
+    println!("z = {:?}", z);  // Some(100)
+}
+</pre>
+
+<h2>Optionのチェーン（Kotlinの?.に相当）</h2>
+<pre>
+struct Person {
+    name: String,
+    job: Option&lt;Job&gt;,
+}
+
+struct Job {
+    title: String,
+    salary: Option&lt;u32&gt;,
+}
+
+fn get_salary(person: &amp;Person) -&gt; Option&lt;u32&gt; {
+    // Kotlinなら: person.job?.salary
+    person.job.as_ref().and_then(|j| j.salary)
+}
+
+fn main() {
+    let person = Person {
+        name: String::from("Taro"),
+        job: Some(Job {
+            title: String::from("Engineer"),
+            salary: Some(50000),
+        }),
+    };
+
+    println!("Salary: {:?}", get_salary(&amp;person));
+}
+</pre>
+
+<h2>?演算子（早期リターン）</h2>
+<pre>
+fn get_salary_short(person: &amp;Person) -&gt; Option&lt;u32&gt; {
+    // ?はNoneなら即座にNoneを返す
+    let job = person.job.as_ref()?;
+    let salary = job.salary?;
+    Some(salary)
+}
+
+// さらに短く
+fn get_salary_chain(person: &amp;Person) -&gt; Option&lt;u32&gt; {
+    person.job.as_ref()?.salary
+}
+</pre>
+
+<h2>Vecとの組み合わせ</h2>
+<pre>
+fn main() {
+    let numbers = vec![1, 2, 3, 4, 5];
+
+    // find: 条件に合う最初の要素（Option）
+    let first_even: Option&lt;&amp;i32&gt; = numbers.iter().find(|&amp;&amp;x| x % 2 == 0);
+    println!("first even: {:?}", first_even);  // Some(&amp;2)
+
+    // position: インデックスを返す
+    let pos: Option&lt;usize&gt; = numbers.iter().position(|&amp;x| x == 3);
+    println!("position of 3: {:?}", pos);  // Some(2)
+
+    // get: インデックスでアクセス
+    println!("numbers[1]: {:?}", numbers.get(1));   // Some(&amp;2)
+    println!("numbers[10]: {:?}", numbers.get(10)); // None
+
+    // filter_map: mapとfilterを同時に
+    let options = vec![Some(1), None, Some(3), None, Some(5)];
+    let values: Vec&lt;i32&gt; = options.into_iter().filter_map(|x| x).collect();
+    println!("values: {:?}", values);  // [1, 3, 5]
+}
+</pre>
+
+<h2>OptionとResult</h2>
+<pre>
+fn main() {
+    let x: Option&lt;i32&gt; = Some(5);
+
+    // Option -&gt; Result
+    let result: Result&lt;i32, &amp;str&gt; = x.ok_or("No value");
+    println!("{:?}", result);  // Ok(5)
+
+    let y: Option&lt;i32&gt; = None;
+    let result2: Result&lt;i32, &amp;str&gt; = y.ok_or("No value");
+    println!("{:?}", result2);  // Err("No value")
+}
+</pre>
+
+<h2>エクササイズ 5.2</h2>
+<ol>
+    <li>文字列から数値をパースし、偶数なら2倍した値をSomeで、それ以外はNoneを返す関数を作成</li>
+    <li>ネストした構造体（Country -&gt; City -&gt; Population）から人口を取得する関数を作成（?演算子を使用）</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+// 1. パースして偶数なら2倍
+fn parse_and_double_even(s: &amp;str) -&gt; Option&lt;i32&gt; {
+    s.parse::&lt;i32&gt;()
+        .ok()  // Result -&gt; Option
+        .filter(|&amp;n| n % 2 == 0)
+        .map(|n| n * 2)
+}
+
+fn main() {
+    println!("{:?}", parse_and_double_even("4"));   // Some(8)
+    println!("{:?}", parse_and_double_even("3"));   // None
+    println!("{:?}", parse_and_double_even("abc")); // None
+}
+
+// 2. ネストした構造体
+struct Country {
+    capital: Option&lt;City&gt;,
+}
+
+struct City {
+    population: Option&lt;u64&gt;,
+}
+
+fn get_population(country: &amp;Country) -&gt; Option&lt;u64&gt; {
+    country.capital.as_ref()?.population
+}
+
+fn main() {
+    let japan = Country {
+        capital: Some(City {
+            population: Some(14_000_000),
+        }),
+    };
+
+    let unknown = Country {
+        capital: None,
+    };
+
+    println!("Japan population: {:?}", get_population(&amp;japan));    // Some(14000000)
+    println!("Unknown population: {:?}", get_population(&amp;unknown)); // None
+}
+</pre>
+
+<hr>
+<p><a href="ch05_01_enum.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch05_03_result.html">次へ: 5.3 Result型 &gt;&gt;</a></p>
+</body>
+</html>

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>2.4 カプセル化（pub修飾子、モジュール） - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>2.4 カプセル化（pub修飾子、モジュール）</h1>
+
+<h2>C++/Kotlinとの比較</h2>
+<table border="1" cellpadding="5">
+<tr><th>概念</th><th>C++</th><th>Kotlin</th><th>Rust</th></tr>
+<tr><td>公開</td><td>public:</td><td>public（デフォルト）</td><td>pub</td></tr>
+<tr><td>非公開</td><td>private:</td><td>private</td><td>（デフォルト）</td></tr>
+<tr><td>モジュール</td><td>namespace</td><td>package</td><td>mod</td></tr>
+</table>
+
+<h2>Rustのデフォルトはプライベート</h2>
+<p>C++やKotlinとは逆で、Rustでは全てがデフォルトでプライベート。公開するものに<code>pub</code>をつける。</p>
+
+<h2>モジュールの基本</h2>
+<pre>
+// モジュールの定義（同一ファイル内）
+mod math {
+    // プライベート関数（モジュール外からアクセス不可）
+    fn internal_calc(x: i32) -&gt; i32 {
+        x * 2
+    }
+
+    // パブリック関数
+    pub fn add(a: i32, b: i32) -&gt; i32 {
+        a + b
+    }
+
+    pub fn double(x: i32) -&gt; i32 {
+        internal_calc(x)  // 内部関数を呼び出し
+    }
+}
+
+fn main() {
+    println!("{}", math::add(2, 3));
+    println!("{}", math::double(5));
+    // println!("{}", math::internal_calc(5));  // エラー: プライベート
+}
+</pre>
+
+<h2>構造体のカプセル化</h2>
+<pre>
+mod user {
+    // 構造体自体はpubだが、フィールドは個別に制御
+    pub struct User {
+        pub username: String,  // 公開
+        email: String,         // 非公開
+        age: u32,              // 非公開
+    }
+
+    impl User {
+        // コンストラクタ（非公開フィールドがあるので必須）
+        pub fn new(username: String, email: String, age: u32) -&gt; User {
+            User { username, email, age }
+        }
+
+        // ゲッター
+        pub fn email(&amp;self) -&gt; &amp;str {
+            &amp;self.email
+        }
+
+        pub fn age(&amp;self) -&gt; u32 {
+            self.age
+        }
+
+        // セッター（検証付き）
+        pub fn set_age(&amp;mut self, age: u32) {
+            if age &lt; 150 {
+                self.age = age;
+            }
+        }
+    }
+}
+
+fn main() {
+    let mut u = user::User::new(
+        String::from("taro"),
+        String::from("taro@example.com"),
+        25
+    );
+
+    // 公開フィールドにはアクセス可能
+    println!("username: {}", u.username);
+
+    // 非公開フィールドはゲッター経由
+    println!("email: {}", u.email());
+    println!("age: {}", u.age());
+
+    // セッター経由で変更
+    u.set_age(26);
+    println!("new age: {}", u.age());
+}
+</pre>
+
+<h2>ネストしたモジュール</h2>
+<pre>
+mod outer {
+    pub mod inner {
+        pub fn hello() {
+            println!("Hello from inner!");
+        }
+    }
+
+    pub fn call_inner() {
+        inner::hello();  // 同じ親モジュール内からはアクセス可能
+    }
+}
+
+fn main() {
+    outer::inner::hello();
+    outer::call_inner();
+}
+</pre>
+
+<h2>use文でパスを短縮</h2>
+<pre>
+mod math {
+    pub mod advanced {
+        pub fn factorial(n: u64) -&gt; u64 {
+            if n &lt;= 1 { 1 } else { n * factorial(n - 1) }
+        }
+    }
+}
+
+// useでパスを短縮
+use math::advanced::factorial;
+
+// または別名をつける
+use math::advanced::factorial as fact;
+
+fn main() {
+    println!("5! = {}", factorial(5));
+    println!("6! = {}", fact(6));
+}
+</pre>
+
+<h2>ファイル分割（実践）</h2>
+<p>実際のプロジェクトではモジュールをファイルに分割する：</p>
+<pre>
+src/
+├── main.rs
+├── math.rs        // mod math の内容
+└── user/
+    ├── mod.rs     // mod user の内容
+    └── profile.rs // mod user::profile の内容
+</pre>
+
+<h3>main.rs</h3>
+<pre>
+mod math;    // math.rsを読み込む
+mod user;    // user/mod.rsを読み込む
+
+fn main() {
+    println!("{}", math::add(2, 3));
+}
+</pre>
+
+<h3>math.rs</h3>
+<pre>
+pub fn add(a: i32, b: i32) -&gt; i32 {
+    a + b
+}
+</pre>
+
+<h2>pub(crate)とpub(super)</h2>
+<pre>
+mod outer {
+    pub(crate) fn crate_visible() {
+        // このクレート内でのみ公開
+    }
+
+    mod inner {
+        pub(super) fn parent_visible() {
+            // 親モジュール（outer）にのみ公開
+        }
+    }
+}
+</pre>
+
+<h2>エクササイズ 2.4</h2>
+<ol>
+    <li>BankAccountモジュールを作成し、balanceフィールドを非公開にして、deposit/withdrawメソッドを公開</li>
+    <li>withdrawは残高不足の場合にfalseを返すように実装</li>
+    <li>get_balance()ゲッターを実装</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+mod bank {
+    pub struct Account {
+        owner: String,
+        balance: i64,  // 非公開
+    }
+
+    impl Account {
+        pub fn new(owner: String, initial_balance: i64) -&gt; Account {
+            Account {
+                owner,
+                balance: if initial_balance &gt; 0 { initial_balance } else { 0 },
+            }
+        }
+
+        pub fn owner(&amp;self) -&gt; &amp;str {
+            &amp;self.owner
+        }
+
+        pub fn balance(&amp;self) -&gt; i64 {
+            self.balance
+        }
+
+        pub fn deposit(&amp;mut self, amount: i64) {
+            if amount &gt; 0 {
+                self.balance += amount;
+            }
+        }
+
+        pub fn withdraw(&amp;mut self, amount: i64) -&gt; bool {
+            if amount &gt; 0 &amp;&amp; self.balance &gt;= amount {
+                self.balance -= amount;
+                true
+            } else {
+                false
+            }
+        }
+    }
+}
+
+fn main() {
+    let mut account = bank::Account::new(String::from("Taro"), 1000);
+
+    println!("Owner: {}", account.owner());
+    println!("Balance: {}", account.balance());
+
+    account.deposit(500);
+    println!("After deposit: {}", account.balance());
+
+    if account.withdraw(2000) {
+        println!("Withdrew 2000");
+    } else {
+        println!("Insufficient funds!");
+    }
+
+    if account.withdraw(300) {
+        println!("Withdrew 300");
+    }
+    println!("Final balance: {}", account.balance());
+}
+</pre>
+
+<hr>
+<p><a href="ch02_03_impl.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch03_01_arrays.html">次へ: 3.1 配列とスライス &gt;&gt;</a></p>
+</body>
+</html>

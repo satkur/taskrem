@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>5.3 Result型とエラーハンドリング - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>5.3 Result型とエラーハンドリング</h1>
+
+<h2>C++/Kotlinとの比較</h2>
+<table border="1" cellpadding="5">
+<tr><th>言語</th><th>エラー処理</th><th>特徴</th></tr>
+<tr><td>C++</td><td>例外（try/catch）</td><td>パフォーマンスコスト、予測困難</td></tr>
+<tr><td>Kotlin</td><td>例外 + Result型</td><td>例外が主流</td></tr>
+<tr><td>Rust</td><td>Result型</td><td>コンパイル時にエラー処理を強制</td></tr>
+</table>
+
+<h2>Resultの定義</h2>
+<pre>
+// 標準ライブラリの定義（参考）
+enum Result&lt;T, E&gt; {
+    Ok(T),   // 成功時の値
+    Err(E),  // エラー時の値
+}
+</pre>
+
+<h2>基本的な使い方</h2>
+<pre>
+use std::fs::File;
+
+fn main() {
+    let f = File::open("hello.txt");
+
+    let file = match f {
+        Ok(file) =&gt; file,
+        Err(error) =&gt; {
+            panic!("Failed to open file: {:?}", error);
+        }
+    };
+}
+</pre>
+
+<h2>unwrapとexpect</h2>
+<pre>
+use std::fs::File;
+
+fn main() {
+    // unwrap: エラーならpanic
+    let f = File::open("hello.txt").unwrap();
+
+    // expect: エラーメッセージ付きpanic
+    let f = File::open("hello.txt")
+        .expect("Failed to open hello.txt");
+}
+</pre>
+
+<h2>エラーの伝播（?演算子）</h2>
+<pre>
+use std::fs::File;
+use std::io::{self, Read};
+
+// 冗長な書き方
+fn read_file_verbose(path: &amp;str) -&gt; Result&lt;String, io::Error&gt; {
+    let f = File::open(path);
+
+    let mut f = match f {
+        Ok(file) =&gt; file,
+        Err(e) =&gt; return Err(e),
+    };
+
+    let mut s = String::new();
+
+    match f.read_to_string(&amp;mut s) {
+        Ok(_) =&gt; Ok(s),
+        Err(e) =&gt; Err(e),
+    }
+}
+
+// ?演算子を使った簡潔な書き方
+fn read_file(path: &amp;str) -&gt; Result&lt;String, io::Error&gt; {
+    let mut f = File::open(path)?;  // エラーなら即座にreturn Err(e)
+    let mut s = String::new();
+    f.read_to_string(&amp;mut s)?;
+    Ok(s)
+}
+
+// さらに短く
+fn read_file_short(path: &amp;str) -&gt; Result&lt;String, io::Error&gt; {
+    let mut s = String::new();
+    File::open(path)?.read_to_string(&amp;mut s)?;
+    Ok(s)
+}
+
+// 最短（標準ライブラリの関数を使用）
+fn read_file_std(path: &amp;str) -&gt; Result&lt;String, io::Error&gt; {
+    std::fs::read_to_string(path)
+}
+</pre>
+
+<h2>Resultのメソッド</h2>
+<pre>
+fn main() {
+    let ok: Result&lt;i32, &amp;str&gt; = Ok(5);
+    let err: Result&lt;i32, &amp;str&gt; = Err("error");
+
+    // is_ok / is_err
+    println!("ok.is_ok() = {}", ok.is_ok());   // true
+    println!("err.is_err() = {}", err.is_err()); // true
+
+    // ok() / err(): OptionへUnwrap
+    println!("ok.ok() = {:?}", ok.ok());       // Some(5)
+    println!("err.err() = {:?}", err.err());   // Some("error")
+
+    // map: 成功値を変換
+    let doubled = ok.map(|n| n * 2);
+    println!("doubled = {:?}", doubled);  // Ok(10)
+
+    // map_err: エラーを変換
+    let err2 = err.map_err(|e| format!("Error: {}", e));
+    println!("err2 = {:?}", err2);  // Err("Error: error")
+
+    // unwrap_or: デフォルト値
+    println!("ok.unwrap_or(0) = {}", ok.unwrap_or(0));   // 5
+    println!("err.unwrap_or(0) = {}", err.unwrap_or(0)); // 0
+
+    // and_then: Resultを返す関数をチェーン
+    let result = ok.and_then(|n| {
+        if n &gt; 0 { Ok(n * 2) } else { Err("negative") }
+    });
+    println!("result = {:?}", result);  // Ok(10)
+}
+</pre>
+
+<h2>独自のエラー型</h2>
+<pre>
+#[derive(Debug)]
+enum AppError {
+    NotFound,
+    InvalidInput(String),
+    IoError(std::io::Error),
+}
+
+fn process(input: &amp;str) -&gt; Result&lt;i32, AppError&gt; {
+    if input.is_empty() {
+        return Err(AppError::InvalidInput("empty input".to_string()));
+    }
+
+    input.parse::&lt;i32&gt;()
+        .map_err(|_| AppError::InvalidInput(format!("cannot parse: {}", input)))
+}
+
+fn main() {
+    match process("42") {
+        Ok(n) =&gt; println!("Success: {}", n),
+        Err(AppError::NotFound) =&gt; println!("Not found"),
+        Err(AppError::InvalidInput(msg)) =&gt; println!("Invalid: {}", msg),
+        Err(AppError::IoError(e)) =&gt; println!("IO error: {}", e),
+    }
+}
+</pre>
+
+<h2>From トレイトでエラー変換</h2>
+<pre>
+use std::io;
+use std::num::ParseIntError;
+
+#[derive(Debug)]
+enum AppError {
+    Io(io::Error),
+    Parse(ParseIntError),
+}
+
+// io::Error -&gt; AppError の変換を実装
+impl From&lt;io::Error&gt; for AppError {
+    fn from(err: io::Error) -&gt; AppError {
+        AppError::Io(err)
+    }
+}
+
+impl From&lt;ParseIntError&gt; for AppError {
+    fn from(err: ParseIntError) -&gt; AppError {
+        AppError::Parse(err)
+    }
+}
+
+fn read_and_parse(path: &amp;str) -&gt; Result&lt;i32, AppError&gt; {
+    let content = std::fs::read_to_string(path)?;  // io::Error -&gt; AppError
+    let num: i32 = content.trim().parse()?;        // ParseIntError -&gt; AppError
+    Ok(num)
+}
+</pre>
+
+<h2>複数のエラー型を扱う（Box&lt;dyn Error&gt;）</h2>
+<pre>
+use std::error::Error;
+
+fn read_and_parse(path: &amp;str) -&gt; Result&lt;i32, Box&lt;dyn Error&gt;&gt; {
+    let content = std::fs::read_to_string(path)?;
+    let num: i32 = content.trim().parse()?;
+    Ok(num)
+}
+
+fn main() {
+    match read_and_parse("number.txt") {
+        Ok(n) =&gt; println!("Number: {}", n),
+        Err(e) =&gt; println!("Error: {}", e),
+    }
+}
+</pre>
+
+<h2>mainでResultを返す</h2>
+<pre>
+use std::error::Error;
+
+fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let content = std::fs::read_to_string("hello.txt")?;
+    println!("{}", content);
+    Ok(())
+}
+</pre>
+
+<h2>panicとResult の使い分け</h2>
+<ul>
+    <li><strong>panic!</strong>: 回復不能なエラー（バグ、不正な状態）</li>
+    <li><strong>Result</strong>: 回復可能なエラー（ファイルが見つからない、入力エラーなど）</li>
+</ul>
+
+<h2>エクササイズ 5.3</h2>
+<ol>
+    <li>文字列を数値にパースし、0除算をチェックして割り算を行う関数を作成（独自エラー型を使用）</li>
+    <li>ファイルから数値を読み込み、その2乗を返す関数を作成（?演算子を使用）</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+// 1. 割り算
+#[derive(Debug)]
+enum MathError {
+    ParseError(String),
+    DivideByZero,
+}
+
+fn safe_divide(a: &amp;str, b: &amp;str) -&gt; Result&lt;f64, MathError&gt; {
+    let a: f64 = a.parse()
+        .map_err(|_| MathError::ParseError(a.to_string()))?;
+    let b: f64 = b.parse()
+        .map_err(|_| MathError::ParseError(b.to_string()))?;
+
+    if b == 0.0 {
+        Err(MathError::DivideByZero)
+    } else {
+        Ok(a / b)
+    }
+}
+
+fn main() {
+    println!("{:?}", safe_divide("10", "2"));   // Ok(5.0)
+    println!("{:?}", safe_divide("10", "0"));   // Err(DivideByZero)
+    println!("{:?}", safe_divide("abc", "2"));  // Err(ParseError("abc"))
+}
+
+// 2. ファイルから数値を読み込んで2乗
+use std::error::Error;
+
+fn read_and_square(path: &amp;str) -&gt; Result&lt;i64, Box&lt;dyn Error&gt;&gt; {
+    let content = std::fs::read_to_string(path)?;
+    let num: i64 = content.trim().parse()?;
+    Ok(num * num)
+}
+
+fn main() {
+    match read_and_square("number.txt") {
+        Ok(n) =&gt; println!("Square: {}", n),
+        Err(e) =&gt; println!("Error: {}", e),
+    }
+}
+</pre>
+
+<hr>
+<p><a href="ch05_02_option.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch05_04_patterns.html">次へ: 5.4 パターンマッチング詳細 &gt;&gt;</a></p>
+</body>
+</html>

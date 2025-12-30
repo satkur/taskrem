@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>2.3 implブロックとメソッド - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>2.3 implブロックとメソッド</h1>
+
+<h2>C++/Kotlinとの比較</h2>
+<table border="1" cellpadding="5">
+<tr><th>C++</th><th>Kotlin</th><th>Rust</th></tr>
+<tr>
+<td><pre>
+class Rect {
+    int w, h;
+public:
+    int area() {
+        return w * h;
+    }
+};
+</pre></td>
+<td><pre>
+class Rect(val w: Int, val h: Int) {
+    fun area(): Int {
+        return w * h
+    }
+}
+</pre></td>
+<td><pre>
+struct Rect { w: i32, h: i32 }
+
+impl Rect {
+    fn area(&amp;self) -&gt; i32 {
+        self.w * self.h
+    }
+}
+</pre></td>
+</tr>
+</table>
+
+<h2>メソッドの定義</h2>
+<p>Rustでは構造体の定義とメソッドの定義が分離している（implブロック）。</p>
+<pre>
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+impl Rectangle {
+    // メソッド（&amp;selfを最初の引数に取る）
+    fn area(&amp;self) -&gt; u32 {
+        self.width * self.height
+    }
+
+    // selfを変更するメソッド
+    fn double(&amp;mut self) {
+        self.width *= 2;
+        self.height *= 2;
+    }
+
+    // selfの所有権を取るメソッド（呼び出し後に使えなくなる）
+    fn destroy(self) {
+        println!("Destroying {:?}", self);
+        // selfはここでドロップされる
+    }
+}
+
+fn main() {
+    let mut rect = Rectangle { width: 30, height: 50 };
+
+    println!("area: {}", rect.area());  // メソッド呼び出し
+
+    rect.double();
+    println!("after double: {:?}", rect);
+
+    rect.destroy();
+    // println!("{:?}", rect);  // エラー: rectは既にムーブされた
+}
+</pre>
+
+<h2>selfの3つの形式</h2>
+<ul>
+    <li><code>&amp;self</code> - 不変の参照（読み取り専用）</li>
+    <li><code>&amp;mut self</code> - 可変の参照（変更可能）</li>
+    <li><code>self</code> - 所有権を取る（呼び出し後に元の変数は使えない）</li>
+</ul>
+
+<h2>関連関数（Associated Functions）</h2>
+<p>selfを取らない関数。C++のstatic関数、Kotlinのcompanion objectに相当。</p>
+<pre>
+impl Rectangle {
+    // 関連関数（コンストラクタ的な使い方）
+    fn new(width: u32, height: u32) -&gt; Rectangle {
+        Rectangle { width, height }
+    }
+
+    // 正方形を作る関連関数
+    fn square(size: u32) -&gt; Rectangle {
+        Rectangle { width: size, height: size }
+    }
+}
+
+fn main() {
+    // ::で呼び出す（メソッドは.で呼び出す）
+    let rect1 = Rectangle::new(30, 50);
+    let rect2 = Rectangle::square(20);
+
+    println!("rect1 area: {}", rect1.area());
+    println!("rect2 area: {}", rect2.area());
+}
+</pre>
+
+<h2>複数のimplブロック</h2>
+<p>1つの構造体に複数のimplブロックを持てる（普通は1つにまとめる）。</p>
+<pre>
+impl Rectangle {
+    fn area(&amp;self) -&gt; u32 {
+        self.width * self.height
+    }
+}
+
+impl Rectangle {
+    fn perimeter(&amp;self) -&gt; u32 {
+        2 * (self.width + self.height)
+    }
+}
+</pre>
+
+<h2>他の構造体を引数に取るメソッド</h2>
+<pre>
+impl Rectangle {
+    fn can_hold(&amp;self, other: &amp;Rectangle) -&gt; bool {
+        self.width &gt; other.width &amp;&amp; self.height &gt; other.height
+    }
+}
+
+fn main() {
+    let rect1 = Rectangle::new(30, 50);
+    let rect2 = Rectangle::new(10, 40);
+
+    println!("rect1 can hold rect2: {}", rect1.can_hold(&amp;rect2));
+}
+</pre>
+
+<h2>メソッドチェーン</h2>
+<pre>
+impl Rectangle {
+    fn set_width(mut self, width: u32) -&gt; Self {
+        self.width = width;
+        self
+    }
+
+    fn set_height(mut self, height: u32) -&gt; Self {
+        self.height = height;
+        self
+    }
+}
+
+fn main() {
+    let rect = Rectangle::new(0, 0)
+        .set_width(30)
+        .set_height(50);
+    println!("{:?}", rect);
+}
+</pre>
+
+<h2>エクササイズ 2.3</h2>
+<ol>
+    <li>Circle構造体（radius）を作成し、area()とcircumference()メソッドを実装</li>
+    <li>Circle::new(radius)関連関数を実装</li>
+    <li>2つのCircleの面積を比較するis_larger_than(&amp;self, other: &amp;Circle)メソッドを実装</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+#[derive(Debug)]
+struct Circle {
+    radius: f64,
+}
+
+impl Circle {
+    // 関連関数（コンストラクタ）
+    fn new(radius: f64) -&gt; Circle {
+        Circle { radius }
+    }
+
+    // 面積
+    fn area(&amp;self) -&gt; f64 {
+        std::f64::consts::PI * self.radius * self.radius
+    }
+
+    // 円周
+    fn circumference(&amp;self) -&gt; f64 {
+        2.0 * std::f64::consts::PI * self.radius
+    }
+
+    // 面積比較
+    fn is_larger_than(&amp;self, other: &amp;Circle) -&gt; bool {
+        self.area() &gt; other.area()
+    }
+}
+
+fn main() {
+    let c1 = Circle::new(5.0);
+    let c2 = Circle::new(3.0);
+
+    println!("c1 area: {:.2}", c1.area());
+    println!("c1 circumference: {:.2}", c1.circumference());
+    println!("c1 is larger than c2: {}", c1.is_larger_than(&amp;c2));
+}
+</pre>
+
+<hr>
+<p><a href="ch02_02_structs.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch02_04_modules.html">次へ: 2.4 カプセル化 &gt;&gt;</a></p>
+</body>
+</html>

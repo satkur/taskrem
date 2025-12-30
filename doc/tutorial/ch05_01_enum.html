@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>5.1 enum - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>5.1 enum（列挙型）</h1>
+
+<h2>C++/Kotlinとの比較</h2>
+<table border="1" cellpadding="5">
+<tr><th>概念</th><th>C++</th><th>Kotlin</th><th>Rust</th></tr>
+<tr><td>基本enum</td><td>enum</td><td>enum class</td><td>enum</td></tr>
+<tr><td>データ付きenum</td><td>std::variant</td><td>sealed class</td><td>enum（直接サポート）</td></tr>
+</table>
+
+<h2>基本的なenum</h2>
+<pre>
+// 単純なenum（C++/Kotlinと同様）
+enum Direction {
+    North,
+    South,
+    East,
+    West,
+}
+
+fn main() {
+    let dir = Direction::North;
+
+    match dir {
+        Direction::North =&gt; println!("Going north"),
+        Direction::South =&gt; println!("Going south"),
+        Direction::East =&gt; println!("Going east"),
+        Direction::West =&gt; println!("Going west"),
+    }
+}
+</pre>
+
+<h2>値を持つenum</h2>
+<pre>
+// C風の数値を持つenum
+enum HttpStatus {
+    Ok = 200,
+    NotFound = 404,
+    InternalError = 500,
+}
+
+fn main() {
+    let status = HttpStatus::Ok;
+    println!("Status code: {}", status as i32);  // 200
+}
+</pre>
+
+<h2>データを持つenum（Rustの強力な機能）</h2>
+<p>C++のstd::variantやKotlinのsealed classに相当するが、より簡潔に書ける。</p>
+<pre>
+// 各バリアントが異なるデータを持てる
+enum Message {
+    Quit,                       // データなし
+    Move { x: i32, y: i32 },   // 名前付きフィールド（構造体風）
+    Write(String),              // タプル風
+    ChangeColor(i32, i32, i32), // 複数の値
+}
+
+fn main() {
+    let m1 = Message::Quit;
+    let m2 = Message::Move { x: 10, y: 20 };
+    let m3 = Message::Write(String::from("hello"));
+    let m4 = Message::ChangeColor(255, 0, 0);
+
+    process_message(m2);
+}
+
+fn process_message(msg: Message) {
+    match msg {
+        Message::Quit =&gt; println!("Quit"),
+        Message::Move { x, y } =&gt; println!("Move to ({}, {})", x, y),
+        Message::Write(text) =&gt; println!("Text: {}", text),
+        Message::ChangeColor(r, g, b) =&gt; println!("Color: ({}, {}, {})", r, g, b),
+    }
+}
+</pre>
+
+<h2>enumにメソッドを定義</h2>
+<pre>
+enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+}
+
+impl Message {
+    fn call(&amp;self) {
+        match self {
+            Message::Quit =&gt; println!("Quitting"),
+            Message::Move { x, y } =&gt; println!("Moving to ({}, {})", x, y),
+            Message::Write(text) =&gt; println!("Writing: {}", text),
+        }
+    }
+
+    fn is_quit(&amp;self) -&gt; bool {
+        matches!(self, Message::Quit)
+    }
+}
+
+fn main() {
+    let msg = Message::Write(String::from("hello"));
+    msg.call();
+    println!("Is quit? {}", msg.is_quit());
+}
+</pre>
+
+<h2>IPアドレスの例</h2>
+<pre>
+enum IpAddr {
+    V4(u8, u8, u8, u8),
+    V6(String),
+}
+
+fn main() {
+    let home = IpAddr::V4(127, 0, 0, 1);
+    let loopback = IpAddr::V6(String::from("::1"));
+
+    match home {
+        IpAddr::V4(a, b, c, d) =&gt; println!("IPv4: {}.{}.{}.{}", a, b, c, d),
+        IpAddr::V6(addr) =&gt; println!("IPv6: {}", addr),
+    }
+}
+</pre>
+
+<h2>ジェネリックなenum</h2>
+<pre>
+// 独自のOption風enum
+enum MyOption&lt;T&gt; {
+    Some(T),
+    None,
+}
+
+// 独自のResult風enum
+enum MyResult&lt;T, E&gt; {
+    Ok(T),
+    Err(E),
+}
+
+fn main() {
+    let some_number: MyOption&lt;i32&gt; = MyOption::Some(5);
+    let no_number: MyOption&lt;i32&gt; = MyOption::None;
+
+    let result: MyResult&lt;i32, &amp;str&gt; = MyResult::Ok(42);
+}
+</pre>
+
+<h2>再帰的なenum（Boxが必要）</h2>
+<pre>
+// コンパイルエラー: サイズが無限になる
+// enum List {
+//     Cons(i32, List),
+//     Nil,
+// }
+
+// Boxで間接参照にする
+enum List {
+    Cons(i32, Box&lt;List&gt;),
+    Nil,
+}
+
+fn main() {
+    use List::{Cons, Nil};
+
+    let list = Cons(1, Box::new(Cons(2, Box::new(Cons(3, Box::new(Nil))))));
+}
+</pre>
+
+<h2>enumのサイズ</h2>
+<pre>
+use std::mem::size_of;
+
+enum Small {
+    A,
+    B,
+    C,
+}
+
+enum WithData {
+    Int(i32),
+    Float(f64),
+    Text(String),  // Stringは24バイト（ポインタ+長さ+容量）
+}
+
+fn main() {
+    println!("Small: {} bytes", size_of::&lt;Small&gt;());      // 1
+    println!("WithData: {} bytes", size_of::&lt;WithData&gt;()); // 32（最大バリアント+タグ）
+}
+</pre>
+
+<h2>エクササイズ 5.1</h2>
+<ol>
+    <li>Webイベントを表すenum（PageLoad, KeyPress(char), Click{x: i32, y: i32}）を作成し、各イベントを処理する関数を実装</li>
+    <li>計算機の演算を表すenum（Add, Subtract, Multiply, Divide）を作成し、2つの数値に対して演算を適用する関数を実装</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+// 1. Webイベント
+enum WebEvent {
+    PageLoad,
+    KeyPress(char),
+    Click { x: i32, y: i32 },
+}
+
+fn handle_event(event: WebEvent) {
+    match event {
+        WebEvent::PageLoad =&gt; println!("Page loaded"),
+        WebEvent::KeyPress(c) =&gt; println!("Key pressed: {}", c),
+        WebEvent::Click { x, y } =&gt; println!("Clicked at ({}, {})", x, y),
+    }
+}
+
+fn main() {
+    handle_event(WebEvent::PageLoad);
+    handle_event(WebEvent::KeyPress('a'));
+    handle_event(WebEvent::Click { x: 100, y: 200 });
+}
+
+// 2. 計算機
+enum Operation {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+}
+
+fn calculate(a: f64, b: f64, op: Operation) -&gt; Option&lt;f64&gt; {
+    match op {
+        Operation::Add =&gt; Some(a + b),
+        Operation::Subtract =&gt; Some(a - b),
+        Operation::Multiply =&gt; Some(a * b),
+        Operation::Divide =&gt; {
+            if b == 0.0 {
+                None
+            } else {
+                Some(a / b)
+            }
+        }
+    }
+}
+
+fn main() {
+    println!("10 + 5 = {:?}", calculate(10.0, 5.0, Operation::Add));
+    println!("10 / 0 = {:?}", calculate(10.0, 0.0, Operation::Divide));
+}
+</pre>
+
+<hr>
+<p><a href="ch04_03_lifetimes.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch05_02_option.html">次へ: 5.2 Option型 &gt;&gt;</a></p>
+</body>
+</html>

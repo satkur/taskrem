@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>1.1 Hello Worldとエントリポイント - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>1.1 Hello Worldとエントリポイント</h1>
+
+<h2>C++との比較</h2>
+<table border="1" cellpadding="5">
+<tr><th>C++</th><th>Rust</th></tr>
+<tr>
+<td><pre>
+#include &lt;iostream&gt;
+int main() {
+    std::cout &lt;&lt; "Hello" &lt;&lt; std::endl;
+    return 0;
+}
+</pre></td>
+<td><pre>
+fn main() {
+    println!("Hello");
+}
+</pre></td>
+</tr>
+</table>
+
+<h2>ポイント</h2>
+<ul>
+    <li><code>fn</code> で関数定義（functionの略）</li>
+    <li><code>main()</code> がエントリポイント（C++と同じ）</li>
+    <li><code>println!</code> は関数ではなく<strong>マクロ</strong>（!がつく）</li>
+    <li>セミコロンは必須（C++と同じ）</li>
+    <li>return 0 は不要（成功時は暗黙的に0を返す）</li>
+</ul>
+
+<h2>printlnマクロの使い方</h2>
+<pre>
+fn main() {
+    // 単純な出力
+    println!("Hello, World!");
+
+    // 変数の埋め込み（{}がプレースホルダ）
+    let name = "Rust";
+    println!("Hello, {}!", name);
+
+    // 複数の値
+    let x = 10;
+    let y = 20;
+    println!("x = {}, y = {}", x, y);
+
+    // デバッグ出力（{:?}）
+    let arr = [1, 2, 3];
+    println!("arr = {:?}", arr);
+
+    // 名前付きプレースホルダ
+    println!("{name} is {adj}", name = "Rust", adj = "awesome");
+}
+</pre>
+
+<h2>エクササイズ 1.1</h2>
+<p>以下のプログラムを作成してください：</p>
+<ol>
+    <li>自分の名前を出力する</li>
+    <li>2つの数値（例: 42と17）を変数に入れ、その和を出力する</li>
+    <li>配列 [10, 20, 30] を {:?} でデバッグ出力する</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+fn main() {
+    // 1. 名前の出力
+    println!("My name is Taro");
+
+    // 2. 数値の和
+    let a = 42;
+    let b = 17;
+    println!("{} + {} = {}", a, b, a + b);
+
+    // 3. 配列のデバッグ出力
+    let arr = [10, 20, 30];
+    println!("{:?}", arr);
+}
+</pre>
+
+<h2>補足: マクロとは</h2>
+<p>C++のマクロ（#define）とは異なり、Rustのマクロは衛生的マクロ（hygienic macro）で、型安全かつコンパイル時に展開される。<code>println!</code>は可変長引数を受け取れる特殊な構文を実現するためにマクロとして実装されている。</p>
+
+<hr>
+<p><a href="index.html">目次</a> | <a href="ch01_02_variables.html">次へ: 1.2 変数と型 &gt;&gt;</a></p>
+</body>
+</html>

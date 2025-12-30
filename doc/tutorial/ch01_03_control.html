@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>1.3 制御構文 - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>1.3 制御構文（if, for, while, loop, match）</h1>
+
+<h2>if式</h2>
+<p><strong>重要:</strong> Rustのifは式（expression）であり、値を返す。Kotlinと同様。</p>
+<pre>
+fn main() {
+    let number = 7;
+
+    // 基本形（括弧不要）
+    if number &gt; 5 {
+        println!("greater than 5");
+    } else if number &gt; 0 {
+        println!("positive");
+    } else {
+        println!("non-positive");
+    }
+
+    // 式として使う（三項演算子の代わり）
+    let result = if number % 2 == 0 { "even" } else { "odd" };
+    println!("{} is {}", number, result);
+}
+</pre>
+
+<h2>forループ</h2>
+<pre>
+fn main() {
+    // 範囲（Range）
+    for i in 0..5 {           // 0, 1, 2, 3, 4（5は含まない）
+        println!("{}", i);
+    }
+
+    for i in 0..=5 {          // 0, 1, 2, 3, 4, 5（5を含む）
+        println!("{}", i);
+    }
+
+    // 逆順
+    for i in (0..5).rev() {   // 4, 3, 2, 1, 0
+        println!("{}", i);
+    }
+
+    // 配列のイテレーション
+    let arr = [10, 20, 30];
+    for elem in arr {
+        println!("{}", elem);
+    }
+
+    // インデックス付き
+    for (i, elem) in arr.iter().enumerate() {
+        println!("[{}] = {}", i, elem);
+    }
+}
+</pre>
+
+<h2>whileループ</h2>
+<pre>
+fn main() {
+    let mut n = 3;
+    while n &gt; 0 {
+        println!("{}", n);
+        n -= 1;
+    }
+    println!("Liftoff!");
+}
+</pre>
+
+<h2>loop（無限ループ）</h2>
+<p>C++の<code>while(true)</code>に相当するが、<strong>値を返せる</strong>のが特徴：</p>
+<pre>
+fn main() {
+    let mut counter = 0;
+
+    // loopは式として値を返せる
+    let result = loop {
+        counter += 1;
+        if counter == 10 {
+            break counter * 2;  // breakで値を返す
+        }
+    };
+    println!("result = {}", result);  // 20
+}
+</pre>
+
+<h2>match式（Kotlinのwhenに相当）</h2>
+<pre>
+fn main() {
+    let number = 3;
+
+    match number {
+        1 =&gt; println!("one"),
+        2 =&gt; println!("two"),
+        3 =&gt; println!("three"),
+        4 | 5 =&gt; println!("four or five"),  // OR条件
+        6..=10 =&gt; println!("six to ten"),    // 範囲
+        _ =&gt; println!("other"),              // デフォルト（必須）
+    }
+
+    // 式として使う
+    let word = match number {
+        1 =&gt; "one",
+        2 =&gt; "two",
+        _ =&gt; "many",
+    };
+    println!("{}", word);
+}
+</pre>
+
+<h2>breakとcontinue</h2>
+<pre>
+fn main() {
+    // ラベル付きループ（ネストしたループから脱出）
+    'outer: for i in 0..3 {
+        for j in 0..3 {
+            if i == 1 &amp;&amp; j == 1 {
+                break 'outer;  // 外側のループを抜ける
+            }
+            println!("i={}, j={}", i, j);
+        }
+    }
+}
+</pre>
+
+<h2>エクササイズ 1.3</h2>
+<ol>
+    <li>1から100までの数で、3の倍数なら"Fizz"、5の倍数なら"Buzz"、両方の倍数なら"FizzBuzz"、それ以外は数値を出力（FizzBuzz問題）</li>
+    <li>loopを使って、2の累乗を計算し、1000を超えたらその値を返して出力</li>
+    <li>matchを使って、入力された月（1-12の数値）を季節に変換（春:3-5, 夏:6-8, 秋:9-11, 冬:12,1,2）</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+fn main() {
+    // 1. FizzBuzz
+    for n in 1..=100 {
+        let result = if n % 15 == 0 {
+            String::from("FizzBuzz")
+        } else if n % 3 == 0 {
+            String::from("Fizz")
+        } else if n % 5 == 0 {
+            String::from("Buzz")
+        } else {
+            n.to_string()
+        };
+        println!("{}", result);
+    }
+
+    // 2. 2の累乗
+    let mut power = 1;
+    let result = loop {
+        power *= 2;
+        if power &gt; 1000 {
+            break power;
+        }
+    };
+    println!("1000を超える最初の2の累乗: {}", result);  // 1024
+
+    // 3. 月から季節
+    let month = 7;
+    let season = match month {
+        3..=5 =&gt; "春",
+        6..=8 =&gt; "夏",
+        9..=11 =&gt; "秋",
+        12 | 1 | 2 =&gt; "冬",
+        _ =&gt; "不正な月",
+    };
+    println!("{}月は{}", month, season);
+}
+</pre>
+
+<hr>
+<p><a href="ch01_02_variables.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch01_04_args.html">次へ: 1.4 コマンドライン引数 &gt;&gt;</a></p>
+</body>
+</html>

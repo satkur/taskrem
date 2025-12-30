@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>1.4 コマンドライン引数 - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>1.4 コマンドライン引数</h1>
+
+<h2>C++との比較</h2>
+<table border="1" cellpadding="5">
+<tr><th>C++</th><th>Rust</th></tr>
+<tr>
+<td><pre>
+int main(int argc, char* argv[]) {
+    for (int i = 0; i &lt; argc; i++) {
+        std::cout &lt;&lt; argv[i] &lt;&lt; std::endl;
+    }
+}
+</pre></td>
+<td><pre>
+use std::env;
+
+fn main() {
+    let args: Vec&lt;String&gt; = env::args().collect();
+    for arg in &amp;args {
+        println!("{}", arg);
+    }
+}
+</pre></td>
+</tr>
+</table>
+
+<h2>std::env::args()</h2>
+<pre>
+use std::env;
+
+fn main() {
+    // args()はイテレータを返す
+    // collect()でVec&lt;String&gt;に変換
+    let args: Vec&lt;String&gt; = env::args().collect();
+
+    // args[0]はプログラム名
+    println!("プログラム名: {}", args[0]);
+
+    // 引数の数
+    println!("引数の数: {}", args.len() - 1);
+
+    // 各引数を出力
+    for (i, arg) in args.iter().enumerate() {
+        println!("args[{}] = {}", i, arg);
+    }
+}
+</pre>
+
+<h2>引数の取得とエラーハンドリング</h2>
+<pre>
+use std::env;
+
+fn main() {
+    let args: Vec&lt;String&gt; = env::args().collect();
+
+    // 引数が足りない場合の処理
+    if args.len() &lt; 2 {
+        println!("Usage: {} &lt;name&gt;", args[0]);
+        return;
+    }
+
+    let name = &amp;args[1];
+    println!("Hello, {}!", name);
+}
+</pre>
+
+<h2>引数を数値に変換</h2>
+<pre>
+use std::env;
+
+fn main() {
+    let args: Vec&lt;String&gt; = env::args().collect();
+
+    if args.len() &lt; 3 {
+        println!("Usage: {} &lt;num1&gt; &lt;num2&gt;", args[0]);
+        return;
+    }
+
+    // parse()で文字列を数値に変換
+    // Result型を返すので、unwrap()でエラー時にpanicさせる
+    let num1: i32 = args[1].parse().unwrap();
+    let num2: i32 = args[2].parse().unwrap();
+
+    println!("{} + {} = {}", num1, num2, num1 + num2);
+}
+</pre>
+
+<h2>より安全な引数処理</h2>
+<pre>
+use std::env;
+
+fn main() {
+    let args: Vec&lt;String&gt; = env::args().collect();
+
+    if args.len() &lt; 3 {
+        eprintln!("Usage: {} &lt;num1&gt; &lt;num2&gt;", args[0]);
+        std::process::exit(1);
+    }
+
+    // matchでエラーハンドリング
+    let num1: i32 = match args[1].parse() {
+        Ok(n) =&gt; n,
+        Err(_) =&gt; {
+            eprintln!("Error: '{}' is not a valid number", args[1]);
+            std::process::exit(1);
+        }
+    };
+
+    let num2: i32 = match args[2].parse() {
+        Ok(n) =&gt; n,
+        Err(_) =&gt; {
+            eprintln!("Error: '{}' is not a valid number", args[2]);
+            std::process::exit(1);
+        }
+    };
+
+    println!("{} + {} = {}", num1, num2, num1 + num2);
+}
+</pre>
+
+<h2>イテレータで直接処理</h2>
+<pre>
+use std::env;
+
+fn main() {
+    // skip(1)で最初の要素（プログラム名）をスキップ
+    for arg in env::args().skip(1) {
+        println!("arg: {}", arg);
+    }
+
+    // nth()でn番目の要素を取得（0-indexed）
+    if let Some(first_arg) = env::args().nth(1) {
+        println!("最初の引数: {}", first_arg);
+    }
+}
+</pre>
+
+<h2>エクササイズ 1.4</h2>
+<ol>
+    <li>コマンドライン引数で渡された全ての数値を足し合わせて出力するプログラムを作成</li>
+    <li>引数で名前と回数を受け取り、「Hello, {名前}!」を指定回数出力するプログラムを作成</li>
+    <li>引数が不足している場合は使い方を表示し、数値でない引数が渡された場合はエラーを表示する</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+use std::env;
+
+fn main() {
+    let args: Vec&lt;String&gt; = env::args().collect();
+
+    // 1 &amp; 3. 全引数を足し合わせる（エラーハンドリング付き）
+    if args.len() &lt; 2 {
+        eprintln!("Usage: {} &lt;num1&gt; [num2] [num3] ...", args[0]);
+        std::process::exit(1);
+    }
+
+    let mut sum = 0;
+    for arg in args.iter().skip(1) {
+        match arg.parse::&lt;i32&gt;() {
+            Ok(n) =&gt; sum += n,
+            Err(_) =&gt; {
+                eprintln!("Error: '{}' は数値ではありません", arg);
+                std::process::exit(1);
+            }
+        }
+    }
+    println!("合計: {}", sum);
+}
+</pre>
+
+<pre>
+use std::env;
+
+fn main() {
+    // 2 &amp; 3. 名前と回数を受け取り挨拶
+    let args: Vec&lt;String&gt; = env::args().collect();
+
+    if args.len() &lt; 3 {
+        eprintln!("Usage: {} &lt;name&gt; &lt;count&gt;", args[0]);
+        std::process::exit(1);
+    }
+
+    let name = &amp;args[1];
+    let count: u32 = match args[2].parse() {
+        Ok(n) =&gt; n,
+        Err(_) =&gt; {
+            eprintln!("Error: '{}' は正の整数ではありません", args[2]);
+            std::process::exit(1);
+        }
+    };
+
+    for _ in 0..count {
+        println!("Hello, {}!", name);
+    }
+}
+</pre>
+
+<hr>
+<p><a href="ch01_03_control.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch02_01_functions.html">次へ: 2.1 関数定義 &gt;&gt;</a></p>
+</body>
+</html>

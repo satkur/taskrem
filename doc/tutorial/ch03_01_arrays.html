@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>3.1 配列とスライス - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>3.1 配列とスライス</h1>
+
+<h2>C++との比較</h2>
+<table border="1" cellpadding="5">
+<tr><th>概念</th><th>C++</th><th>Rust</th></tr>
+<tr><td>固定長配列</td><td>int arr[5];</td><td>let arr: [i32; 5];</td></tr>
+<tr><td>配列参照</td><td>int* / span&lt;int&gt;</td><td>&amp;[i32]（スライス）</td></tr>
+</table>
+
+<h2>配列（固定長）</h2>
+<p>配列はスタックに確保され、サイズはコンパイル時に決定。</p>
+<pre>
+fn main() {
+    // 型は [要素の型; 要素数]
+    let arr: [i32; 5] = [1, 2, 3, 4, 5];
+
+    // 型推論も可能
+    let arr2 = [1, 2, 3, 4, 5];
+
+    // 同じ値で初期化
+    let zeros = [0; 10];  // [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+    // アクセス
+    println!("arr[0] = {}", arr[0]);
+    println!("arr[4] = {}", arr[4]);
+
+    // 長さ
+    println!("length: {}", arr.len());
+
+    // 境界チェック（実行時にpanicする）
+    // println!("{}", arr[10]);  // panic!
+}
+</pre>
+
+<h2>可変な配列</h2>
+<pre>
+fn main() {
+    let mut arr = [1, 2, 3, 4, 5];
+    arr[0] = 10;
+    println!("{:?}", arr);  // [10, 2, 3, 4, 5]
+}
+</pre>
+
+<h2>配列のイテレーション</h2>
+<pre>
+fn main() {
+    let arr = [10, 20, 30, 40, 50];
+
+    // forループ（値をコピー）
+    for elem in arr {
+        println!("{}", elem);
+    }
+
+    // 参照でイテレーション
+    for elem in &amp;arr {
+        println!("{}", elem);
+    }
+
+    // インデックス付き
+    for (i, elem) in arr.iter().enumerate() {
+        println!("[{}] = {}", i, elem);
+    }
+
+    // 可変参照でイテレーション
+    let mut arr2 = [1, 2, 3];
+    for elem in &amp;mut arr2 {
+        *elem *= 2;  // 各要素を2倍
+    }
+    println!("{:?}", arr2);  // [2, 4, 6]
+}
+</pre>
+
+<h2>スライス</h2>
+<p>スライスは配列の一部（または全部）への参照。サイズは実行時に決定。</p>
+<pre>
+fn main() {
+    let arr = [1, 2, 3, 4, 5];
+
+    // スライスの作成（範囲指定）
+    let slice: &amp;[i32] = &amp;arr[1..4];  // [2, 3, 4]
+    println!("{:?}", slice);
+
+    // 先頭から
+    let slice2 = &amp;arr[..3];  // [1, 2, 3]
+
+    // 末尾まで
+    let slice3 = &amp;arr[2..];  // [3, 4, 5]
+
+    // 全体
+    let slice4 = &amp;arr[..];   // [1, 2, 3, 4, 5]
+
+    // スライスの長さ
+    println!("slice length: {}", slice.len());
+}
+</pre>
+
+<h2>スライスを引数に取る関数</h2>
+<pre>
+// スライスを受け取ると、配列でもVecでも受け取れる
+fn sum(slice: &amp;[i32]) -&gt; i32 {
+    let mut total = 0;
+    for &amp;num in slice {
+        total += num;
+    }
+    total
+}
+
+// または iter().sum() を使う
+fn sum_idiomatic(slice: &amp;[i32]) -&gt; i32 {
+    slice.iter().sum()
+}
+
+fn main() {
+    let arr = [1, 2, 3, 4, 5];
+    println!("sum: {}", sum(&amp;arr));           // 配列全体
+    println!("sum: {}", sum(&amp;arr[1..4]));     // 一部分
+
+    let vec = vec![10, 20, 30];
+    println!("sum: {}", sum(&amp;vec));           // Vecも渡せる
+}
+</pre>
+
+<h2>便利なスライスメソッド</h2>
+<pre>
+fn main() {
+    let arr = [3, 1, 4, 1, 5, 9, 2, 6];
+
+    // 最初と最後
+    println!("first: {:?}", arr.first());  // Some(3)
+    println!("last: {:?}", arr.last());    // Some(6)
+
+    // 含まれているか
+    println!("contains 5: {}", arr.contains(&amp;5));
+
+    // ソート（可変スライスが必要）
+    let mut arr2 = [3, 1, 4, 1, 5];
+    arr2.sort();
+    println!("sorted: {:?}", arr2);
+
+    // 逆順
+    arr2.reverse();
+    println!("reversed: {:?}", arr2);
+
+    // 二分探索（ソート済みの場合）
+    let arr3 = [1, 2, 3, 4, 5];
+    println!("binary_search 3: {:?}", arr3.binary_search(&amp;3));  // Ok(2)
+}
+</pre>
+
+<h2>多次元配列</h2>
+<pre>
+fn main() {
+    // 2次元配列
+    let matrix: [[i32; 3]; 2] = [
+        [1, 2, 3],
+        [4, 5, 6],
+    ];
+
+    println!("matrix[0][1] = {}", matrix[0][1]);  // 2
+
+    // ネストしたループ
+    for row in &amp;matrix {
+        for &amp;elem in row {
+            print!("{} ", elem);
+        }
+        println!();
+    }
+}
+</pre>
+
+<h2>エクササイズ 3.1</h2>
+<ol>
+    <li>配列[1,2,3,4,5]の合計と平均を計算する</li>
+    <li>スライスを受け取り、最大値を返す関数を作成（空の場合はNoneを返す）</li>
+    <li>配列の要素を逆順にした新しい配列を作成する</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+fn find_max(slice: &amp;[i32]) -&gt; Option&lt;i32&gt; {
+    if slice.is_empty() {
+        return None;
+    }
+    let mut max = slice[0];
+    for &amp;num in &amp;slice[1..] {
+        if num &gt; max {
+            max = num;
+        }
+    }
+    Some(max)
+}
+
+fn main() {
+    // 1. 合計と平均
+    let arr = [1, 2, 3, 4, 5];
+    let sum: i32 = arr.iter().sum();
+    let avg = sum as f64 / arr.len() as f64;
+    println!("sum: {}, avg: {}", sum, avg);
+
+    // 2. 最大値
+    println!("max: {:?}", find_max(&amp;arr));
+    println!("max of empty: {:?}", find_max(&amp;[]));
+
+    // 3. 逆順
+    let mut reversed = arr;
+    reversed.reverse();
+    println!("reversed: {:?}", reversed);
+
+    // または新しい配列を作成
+    let reversed2: Vec&lt;i32&gt; = arr.iter().rev().copied().collect();
+    println!("reversed2: {:?}", reversed2);
+}
+</pre>
+
+<hr>
+<p><a href="ch02_04_modules.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch03_02_vec.html">次へ: 3.2 Vec &gt;&gt;</a></p>
+</body>
+</html>

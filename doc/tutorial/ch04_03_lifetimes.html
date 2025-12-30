@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>4.3 ライフタイム入門 - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>4.3 ライフタイム入門</h1>
+
+<h2>ライフタイムとは</h2>
+<p>ライフタイムは「参照が有効な期間」を表す。通常はコンパイラが自動的に推論するが、曖昧な場合は明示的な注釈が必要。</p>
+
+<h2>なぜライフタイムが必要か</h2>
+<pre>
+// このコードはコンパイルエラー
+fn longest(x: &amp;str, y: &amp;str) -&gt; &amp;str {
+    if x.len() &gt; y.len() {
+        x
+    } else {
+        y
+    }
+}
+// エラー: 戻り値のライフタイムが不明
+// xとyのどちらのライフタイムに紐づくか分からない
+</pre>
+
+<h2>ライフタイム注釈</h2>
+<pre>
+// 'a はライフタイムパラメータ
+fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str {
+    if x.len() &gt; y.len() {
+        x
+    } else {
+        y
+    }
+}
+
+fn main() {
+    let s1 = String::from("hello");
+    let s2 = String::from("world!");
+
+    let result = longest(&amp;s1, &amp;s2);
+    println!("longest: {}", result);
+}
+</pre>
+
+<h2>ライフタイムの意味</h2>
+<p><code>fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str</code></p>
+<ul>
+    <li><code>'a</code>: ライフタイムパラメータ（慣例的にaから始める）</li>
+    <li>「xとyは少なくとも'aの期間有効で、戻り値も'aの期間有効」という意味</li>
+    <li>実際のライフタイムはxとyの短い方になる</li>
+</ul>
+
+<pre>
+fn main() {
+    let s1 = String::from("long string");
+
+    {
+        let s2 = String::from("xyz");
+        let result = longest(&amp;s1, &amp;s2);
+        println!("longest: {}", result);  // OK: resultはs2のスコープ内
+    }
+
+    // let result = longest(&amp;s1, &amp;s2);  // エラー: s2はスコープ外
+}
+</pre>
+
+<h2>ライフタイム省略規則</h2>
+<p>以下の場合、コンパイラが自動的にライフタイムを推論する：</p>
+
+<h3>規則1: 各入力参照に個別のライフタイム</h3>
+<pre>
+fn foo(x: &amp;i32, y: &amp;i32)
+// は以下と同じ
+fn foo&lt;'a, 'b&gt;(x: &amp;'a i32, y: &amp;'b i32)
+</pre>
+
+<h3>規則2: 入力が1つなら出力は同じライフタイム</h3>
+<pre>
+fn foo(x: &amp;str) -&gt; &amp;str
+// は以下と同じ
+fn foo&lt;'a&gt;(x: &amp;'a str) -&gt; &amp;'a str
+</pre>
+
+<h3>規則3: メソッドで&amp;selfがあれば出力は&amp;selfのライフタイム</h3>
+<pre>
+impl Foo {
+    fn bar(&amp;self, x: &amp;str) -&gt; &amp;str
+    // は以下と同じ
+    fn bar&lt;'a, 'b&gt;(&amp;'a self, x: &amp;'b str) -&gt; &amp;'a str
+}
+</pre>
+
+<h2>構造体のライフタイム</h2>
+<pre>
+// 参照を持つ構造体にはライフタイム注釈が必要
+struct ImportantExcerpt&lt;'a&gt; {
+    part: &amp;'a str,
+}
+
+fn main() {
+    let novel = String::from("Call me Ishmael. Some years ago...");
+    let first_sentence = novel.split('.').next().unwrap();
+
+    let excerpt = ImportantExcerpt {
+        part: first_sentence,
+    };
+
+    println!("{}", excerpt.part);
+}
+</pre>
+
+<h2>構造体のメソッドとライフタイム</h2>
+<pre>
+impl&lt;'a&gt; ImportantExcerpt&lt;'a&gt; {
+    fn level(&amp;self) -&gt; i32 {
+        3
+    }
+
+    fn announce_and_return_part(&amp;self, announcement: &amp;str) -&gt; &amp;str {
+        println!("Attention: {}", announcement);
+        self.part  // &amp;selfのライフタイムが適用される
+    }
+}
+</pre>
+
+<h2>'staticライフタイム</h2>
+<p>プログラム全体で有効な特別なライフタイム。</p>
+<pre>
+// 文字列リテラルは'static
+let s: &amp;'static str = "I have a static lifetime.";
+
+// 'staticは慎重に使用（本当に必要な場合のみ）
+</pre>
+
+<h2>複数のライフタイムパラメータ</h2>
+<pre>
+// 異なるライフタイムが必要な場合
+fn longest_with_announcement&lt;'a, 'b&gt;(
+    x: &amp;'a str,
+    y: &amp;'a str,
+    ann: &amp;'b str,
+) -&gt; &amp;'a str {
+    println!("Announcement: {}", ann);
+    if x.len() &gt; y.len() {
+        x
+    } else {
+        y
+    }
+}
+</pre>
+
+<h2>ライフタイムとジェネリクス</h2>
+<pre>
+use std::fmt::Display;
+
+fn longest_with_display&lt;'a, T&gt;(
+    x: &amp;'a str,
+    y: &amp;'a str,
+    ann: T,
+) -&gt; &amp;'a str
+where
+    T: Display,
+{
+    println!("Announcement: {}", ann);
+    if x.len() &gt; y.len() {
+        x
+    } else {
+        y
+    }
+}
+</pre>
+
+<h2>よくある間違い</h2>
+<pre>
+// 間違い: ローカル変数への参照を返す
+fn invalid_output&lt;'a&gt;() -&gt; &amp;'a str {
+    let s = String::from("hello");
+    &amp;s  // エラー: sはこの関数で消える
+}
+
+// 正しい: 所有権を返す
+fn valid_output() -&gt; String {
+    let s = String::from("hello");
+    s
+}
+</pre>
+
+<h2>エクササイズ 4.3</h2>
+<ol>
+    <li>2つの文字列スライスを受け取り、短い方を返す関数 <code>shortest</code> を作成（ライフタイム注釈付き）</li>
+    <li>名前（&amp;str）を持つ構造体 <code>Person</code> を作成し、挨拶を返すメソッドを実装</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+// 1. 短い方を返す
+fn shortest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str {
+    if x.len() &lt;= y.len() {
+        x
+    } else {
+        y
+    }
+}
+
+fn main() {
+    let s1 = "hello";
+    let s2 = "hi";
+    println!("shortest: {}", shortest(s1, s2));  // "hi"
+}
+
+// 2. Person構造体
+struct Person&lt;'a&gt; {
+    name: &amp;'a str,
+}
+
+impl&lt;'a&gt; Person&lt;'a&gt; {
+    fn new(name: &amp;'a str) -&gt; Person&lt;'a&gt; {
+        Person { name }
+    }
+
+    fn greet(&amp;self) -&gt; String {
+        format!("Hello, my name is {}", self.name)
+    }
+
+    // 名前の参照を返す（selfのライフタイムが適用される）
+    fn get_name(&amp;self) -&gt; &amp;str {
+        self.name
+    }
+}
+
+fn main() {
+    let name = String::from("Taro");
+    let person = Person::new(&amp;name);
+
+    println!("{}", person.greet());
+    println!("Name: {}", person.get_name());
+}
+</pre>
+
+<h2>まとめ：所有権・借用・ライフタイム</h2>
+<table border="1" cellpadding="5">
+<tr><th>概念</th><th>説明</th></tr>
+<tr><td>所有権</td><td>各値には唯一の所有者がいる</td></tr>
+<tr><td>ムーブ</td><td>代入や関数呼び出しで所有権が移動</td></tr>
+<tr><td>借用</td><td>参照を使って所有権を移動せずにアクセス</td></tr>
+<tr><td>&amp;T</td><td>不変参照（複数可）</td></tr>
+<tr><td>&amp;mut T</td><td>可変参照（1つだけ）</td></tr>
+<tr><td>ライフタイム</td><td>参照の有効期間を表す</td></tr>
+</table>
+
+<hr>
+<p><a href="ch04_02_borrowing.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch05_01_enum.html">次へ: 5.1 enum &gt;&gt;</a></p>
+</body>
+</html>

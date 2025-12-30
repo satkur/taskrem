@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>6.2 ジェネリクス - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>6.2 ジェネリクス</h1>
+
+<h2>C++/Kotlinとの比較</h2>
+<table border="1" cellpadding="5">
+<tr><th>言語</th><th>ジェネリクス構文</th><th>実装方式</th></tr>
+<tr><td>C++</td><td>template&lt;typename T&gt;</td><td>コンパイル時展開</td></tr>
+<tr><td>Kotlin</td><td>fun &lt;T&gt; ...</td><td>型消去</td></tr>
+<tr><td>Rust</td><td>fn &lt;T&gt; ...</td><td>単相化（monomorphization）</td></tr>
+</table>
+
+<h2>関数でのジェネリクス</h2>
+<pre>
+// ジェネリックな関数
+fn largest&lt;T: PartialOrd&gt;(list: &amp;[T]) -&gt; &amp;T {
+    let mut largest = &amp;list[0];
+
+    for item in list {
+        if item &gt; largest {
+            largest = item;
+        }
+    }
+
+    largest
+}
+
+fn main() {
+    let numbers = vec![34, 50, 25, 100, 65];
+    println!("Largest: {}", largest(&amp;numbers));
+
+    let chars = vec!['y', 'm', 'a', 'q'];
+    println!("Largest: {}", largest(&amp;chars));
+}
+</pre>
+
+<h2>構造体でのジェネリクス</h2>
+<pre>
+struct Point&lt;T&gt; {
+    x: T,
+    y: T,
+}
+
+// 異なる型も可能
+struct Point2&lt;T, U&gt; {
+    x: T,
+    y: U,
+}
+
+fn main() {
+    let integer_point = Point { x: 5, y: 10 };
+    let float_point = Point { x: 1.0, y: 4.0 };
+
+    // 異なる型
+    let mixed = Point2 { x: 5, y: 4.0 };
+}
+</pre>
+
+<h2>ジェネリック構造体のメソッド</h2>
+<pre>
+struct Point&lt;T&gt; {
+    x: T,
+    y: T,
+}
+
+// すべてのTに対するメソッド
+impl&lt;T&gt; Point&lt;T&gt; {
+    fn x(&amp;self) -&gt; &amp;T {
+        &amp;self.x
+    }
+
+    fn y(&amp;self) -&gt; &amp;T {
+        &amp;self.y
+    }
+}
+
+// 特定の型のみのメソッド
+impl Point&lt;f64&gt; {
+    fn distance_from_origin(&amp;self) -&gt; f64 {
+        (self.x.powi(2) + self.y.powi(2)).sqrt()
+    }
+}
+
+fn main() {
+    let p = Point { x: 3.0, y: 4.0 };
+    println!("x = {}", p.x());
+    println!("distance = {}", p.distance_from_origin());
+
+    let p2 = Point { x: 5, y: 10 };
+    println!("x = {}", p2.x());
+    // p2.distance_from_origin();  // エラー: i32には定義されていない
+}
+</pre>
+
+<h2>異なる型パラメータを持つメソッド</h2>
+<pre>
+struct Point&lt;X1, Y1&gt; {
+    x: X1,
+    y: Y1,
+}
+
+impl&lt;X1, Y1&gt; Point&lt;X1, Y1&gt; {
+    // メソッド固有の型パラメータ
+    fn mixup&lt;X2, Y2&gt;(self, other: Point&lt;X2, Y2&gt;) -&gt; Point&lt;X1, Y2&gt; {
+        Point {
+            x: self.x,
+            y: other.y,
+        }
+    }
+}
+
+fn main() {
+    let p1 = Point { x: 5, y: 10.4 };
+    let p2 = Point { x: "Hello", y: 'c' };
+
+    let p3 = p1.mixup(p2);
+    println!("p3.x = {}, p3.y = {}", p3.x, p3.y);  // p3.x = 5, p3.y = c
+}
+</pre>
+
+<h2>enumでのジェネリクス</h2>
+<pre>
+// 標準ライブラリのOption
+enum Option&lt;T&gt; {
+    Some(T),
+    None,
+}
+
+// 標準ライブラリのResult
+enum Result&lt;T, E&gt; {
+    Ok(T),
+    Err(E),
+}
+
+// 独自のenum
+enum Either&lt;L, R&gt; {
+    Left(L),
+    Right(R),
+}
+
+fn main() {
+    let left: Either&lt;i32, &amp;str&gt; = Either::Left(42);
+    let right: Either&lt;i32, &amp;str&gt; = Either::Right("hello");
+}
+</pre>
+
+<h2>単相化（Monomorphization）</h2>
+<p>Rustのジェネリクスは、コンパイル時に具体的な型に展開される（C++のテンプレートと同様）。</p>
+<pre>
+// このコード
+fn identity&lt;T&gt;(x: T) -&gt; T {
+    x
+}
+
+fn main() {
+    let a = identity(5);      // i32
+    let b = identity("hello"); // &amp;str
+}
+
+// コンパイル後（概念的に）
+fn identity_i32(x: i32) -&gt; i32 { x }
+fn identity_str(x: &amp;str) -&gt; &amp;str { x }
+</pre>
+
+<h2>ファントムデータ（PhantomData）</h2>
+<pre>
+use std::marker::PhantomData;
+
+// 型パラメータを使わないが、型として保持したい場合
+struct Id&lt;T&gt; {
+    value: u64,
+    _marker: PhantomData&lt;T&gt;,
+}
+
+struct User;
+struct Post;
+
+type UserId = Id&lt;User&gt;;
+type PostId = Id&lt;Post&gt;;
+
+impl&lt;T&gt; Id&lt;T&gt; {
+    fn new(value: u64) -&gt; Self {
+        Id {
+            value,
+            _marker: PhantomData,
+        }
+    }
+}
+
+fn main() {
+    let user_id: UserId = Id::new(1);
+    let post_id: PostId = Id::new(1);
+
+    // 型が違うので混同できない
+    // let x: UserId = post_id;  // エラー
+}
+</pre>
+
+<h2>エクササイズ 6.2</h2>
+<ol>
+    <li>ジェネリックなPair&lt;T, U&gt;構造体を作成し、first()とsecond()メソッドを実装</li>
+    <li>swap()メソッドを実装し、Pair&lt;U, T&gt;を返す</li>
+    <li>スライスの最小値を返すジェネリック関数を作成（PartialOrd境界が必要）</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+// 1 &amp; 2. Pair
+#[derive(Debug)]
+struct Pair&lt;T, U&gt; {
+    first: T,
+    second: U,
+}
+
+impl&lt;T, U&gt; Pair&lt;T, U&gt; {
+    fn new(first: T, second: U) -&gt; Self {
+        Pair { first, second }
+    }
+
+    fn first(&amp;self) -&gt; &amp;T {
+        &amp;self.first
+    }
+
+    fn second(&amp;self) -&gt; &amp;U {
+        &amp;self.second
+    }
+
+    fn swap(self) -&gt; Pair&lt;U, T&gt; {
+        Pair {
+            first: self.second,
+            second: self.first,
+        }
+    }
+}
+
+fn main() {
+    let pair = Pair::new(1, "hello");
+    println!("first: {}, second: {}", pair.first(), pair.second());
+
+    let swapped = pair.swap();
+    println!("swapped: {:?}", swapped);
+}
+
+// 3. 最小値
+fn smallest&lt;T: PartialOrd&gt;(list: &amp;[T]) -&gt; Option&lt;&amp;T&gt; {
+    if list.is_empty() {
+        return None;
+    }
+
+    let mut smallest = &amp;list[0];
+    for item in list {
+        if item &lt; smallest {
+            smallest = item;
+        }
+    }
+    Some(smallest)
+}
+
+fn main() {
+    let numbers = vec![34, 50, 25, 100, 65];
+    println!("Smallest: {:?}", smallest(&amp;numbers));
+
+    let empty: Vec&lt;i32&gt; = vec![];
+    println!("Smallest of empty: {:?}", smallest(&amp;empty));
+}
+</pre>
+
+<hr>
+<p><a href="ch06_01_traits.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch06_03_bounds.html">次へ: 6.3 トレイト境界 &gt;&gt;</a></p>
+</body>
+</html>

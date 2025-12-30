@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>7.1 Box&lt;T&gt; - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>7.1 Box&lt;T&gt;</h1>
+
+<h2>C++との比較</h2>
+<table border="1" cellpadding="5">
+<tr><th>C++</th><th>Rust</th><th>用途</th></tr>
+<tr><td>std::unique_ptr&lt;T&gt;</td><td>Box&lt;T&gt;</td><td>ヒープ上の単一所有権</td></tr>
+<tr><td>std::shared_ptr&lt;T&gt;</td><td>Rc&lt;T&gt; / Arc&lt;T&gt;</td><td>共有所有権</td></tr>
+<tr><td>T*（生ポインタ）</td><td>*const T / *mut T</td><td>unsafe時のみ</td></tr>
+</table>
+
+<h2>Boxとは</h2>
+<p>Box&lt;T&gt;は最もシンプルなスマートポインタで、ヒープ上にデータを確保する。</p>
+<ul>
+    <li>コンパイル時にサイズが分からない型を使いたいとき</li>
+    <li>大きなデータのムーブコストを避けたいとき</li>
+    <li>トレイトオブジェクトを使いたいとき</li>
+    <li>再帰的なデータ構造</li>
+</ul>
+
+<h2>基本的な使い方</h2>
+<pre>
+fn main() {
+    // ヒープ上に確保
+    let b = Box::new(5);
+    println!("b = {}", b);
+
+    // 自動的にデリファレンスされる
+    let x = *b;  // ムーブ
+    println!("x = {}", x);
+}
+</pre>
+
+<h2>大きなデータのムーブ</h2>
+<pre>
+fn main() {
+    // スタック上の大きな配列
+    let arr = [0u8; 1_000_000];  // 1MB
+    let arr2 = arr;  // 1MBをコピー（重い）
+
+    // Boxを使うとポインタのコピーのみ
+    let boxed = Box::new([0u8; 1_000_000]);
+    let boxed2 = boxed;  // 8バイトのポインタをムーブ（軽い）
+}
+</pre>
+
+<h2>再帰的なデータ構造</h2>
+<pre>
+// コンパイルエラー: サイズが無限
+// enum List {
+//     Cons(i32, List),
+//     Nil,
+// }
+
+// Boxで間接参照にする
+enum List {
+    Cons(i32, Box&lt;List&gt;),
+    Nil,
+}
+
+use List::{Cons, Nil};
+
+fn main() {
+    let list = Cons(1, Box::new(Cons(2, Box::new(Cons(3, Box::new(Nil))))));
+}
+</pre>
+
+<h2>二分木の実装</h2>
+<pre>
+#[derive(Debug)]
+struct Node&lt;T&gt; {
+    value: T,
+    left: Option&lt;Box&lt;Node&lt;T&gt;&gt;&gt;,
+    right: Option&lt;Box&lt;Node&lt;T&gt;&gt;&gt;,
+}
+
+impl&lt;T&gt; Node&lt;T&gt; {
+    fn new(value: T) -&gt; Self {
+        Node {
+            value,
+            left: None,
+            right: None,
+        }
+    }
+
+    fn with_children(value: T, left: Node&lt;T&gt;, right: Node&lt;T&gt;) -&gt; Self {
+        Node {
+            value,
+            left: Some(Box::new(left)),
+            right: Some(Box::new(right)),
+        }
+    }
+}
+
+fn main() {
+    let tree = Node::with_children(
+        1,
+        Node::with_children(2, Node::new(4), Node::new(5)),
+        Node::new(3),
+    );
+    println!("{:#?}", tree);
+}
+</pre>
+
+<h2>Derefトレイト</h2>
+<pre>
+use std::ops::Deref;
+
+// 独自のBox風型
+struct MyBox&lt;T&gt;(T);
+
+impl&lt;T&gt; MyBox&lt;T&gt; {
+    fn new(x: T) -&gt; MyBox&lt;T&gt; {
+        MyBox(x)
+    }
+}
+
+impl&lt;T&gt; Deref for MyBox&lt;T&gt; {
+    type Target = T;
+
+    fn deref(&amp;self) -&gt; &amp;Self::Target {
+        &amp;self.0
+    }
+}
+
+fn main() {
+    let x = 5;
+    let y = MyBox::new(x);
+
+    assert_eq!(5, x);
+    assert_eq!(5, *y);  // Derefにより*(y.deref())と同等
+}
+</pre>
+
+<h2>Deref Coercion（参照の自動変換）</h2>
+<pre>
+fn hello(name: &amp;str) {
+    println!("Hello, {}!", name);
+}
+
+fn main() {
+    let m = Box::new(String::from("Rust"));
+
+    // Box&lt;String&gt; -&gt; &amp;String -&gt; &amp;str と自動変換
+    hello(&amp;m);
+
+    // 手動で書くと
+    hello(&amp;(*m)[..]);
+}
+</pre>
+
+<h2>Dropトレイト</h2>
+<pre>
+struct CustomSmartPointer {
+    data: String,
+}
+
+impl Drop for CustomSmartPointer {
+    fn drop(&amp;mut self) {
+        println!("Dropping: {}", self.data);
+    }
+}
+
+fn main() {
+    let a = CustomSmartPointer {
+        data: String::from("first"),
+    };
+    let b = CustomSmartPointer {
+        data: String::from("second"),
+    };
+
+    println!("Created pointers");
+
+    // 早期解放
+    drop(a);  // std::mem::drop()を呼び出す
+
+    println!("End of main");
+}
+// 出力:
+// Created pointers
+// Dropping: first
+// End of main
+// Dropping: second
+</pre>
+
+<h2>Box::leak（ライフタイムを延長）</h2>
+<pre>
+fn main() {
+    // 'staticな参照を作成
+    let s: &amp;'static str = Box::leak(String::from("hello").into_boxed_str());
+    println!("{}", s);
+
+    // 注意: メモリは解放されない（プログラム終了まで生存）
+}
+</pre>
+
+<h2>エクササイズ 7.1</h2>
+<ol>
+    <li>Boxを使った単方向リンクリストを実装（push, pop, len メソッド付き）</li>
+    <li>二分探索木のinsertメソッドを実装</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+// 1. リンクリスト
+type Link&lt;T&gt; = Option&lt;Box&lt;Node&lt;T&gt;&gt;&gt;;
+
+struct Node&lt;T&gt; {
+    value: T,
+    next: Link&lt;T&gt;,
+}
+
+struct LinkedList&lt;T&gt; {
+    head: Link&lt;T&gt;,
+    len: usize,
+}
+
+impl&lt;T&gt; LinkedList&lt;T&gt; {
+    fn new() -&gt; Self {
+        LinkedList { head: None, len: 0 }
+    }
+
+    fn push(&amp;mut self, value: T) {
+        let new_node = Box::new(Node {
+            value,
+            next: self.head.take(),
+        });
+        self.head = Some(new_node);
+        self.len += 1;
+    }
+
+    fn pop(&amp;mut self) -&gt; Option&lt;T&gt; {
+        self.head.take().map(|node| {
+            self.head = node.next;
+            self.len -= 1;
+            node.value
+        })
+    }
+
+    fn len(&amp;self) -&gt; usize {
+        self.len
+    }
+}
+
+fn main() {
+    let mut list = LinkedList::new();
+    list.push(1);
+    list.push(2);
+    list.push(3);
+
+    println!("len: {}", list.len());  // 3
+    println!("pop: {:?}", list.pop()); // Some(3)
+    println!("pop: {:?}", list.pop()); // Some(2)
+    println!("len: {}", list.len());  // 1
+}
+
+// 2. 二分探索木（簡易版）
+struct BST&lt;T&gt; {
+    value: T,
+    left: Option&lt;Box&lt;BST&lt;T&gt;&gt;&gt;,
+    right: Option&lt;Box&lt;BST&lt;T&gt;&gt;&gt;,
+}
+
+impl&lt;T: Ord&gt; BST&lt;T&gt; {
+    fn new(value: T) -&gt; Self {
+        BST {
+            value,
+            left: None,
+            right: None,
+        }
+    }
+
+    fn insert(&amp;mut self, value: T) {
+        if value &lt; self.value {
+            match self.left {
+                Some(ref mut node) =&gt; node.insert(value),
+                None =&gt; self.left = Some(Box::new(BST::new(value))),
+            }
+        } else {
+            match self.right {
+                Some(ref mut node) =&gt; node.insert(value),
+                None =&gt; self.right = Some(Box::new(BST::new(value))),
+            }
+        }
+    }
+}
+
+fn main() {
+    let mut tree = BST::new(5);
+    tree.insert(3);
+    tree.insert(7);
+    tree.insert(1);
+    tree.insert(4);
+}
+</pre>
+
+<hr>
+<p><a href="ch06_03_bounds.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch07_02_rc.html">次へ: 7.2 Rc/Arc &gt;&gt;</a></p>
+</body>
+</html>

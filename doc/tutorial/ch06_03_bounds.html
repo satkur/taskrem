@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>6.3 トレイト境界 - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>6.3 トレイト境界</h1>
+
+<h2>基本のトレイト境界</h2>
+<pre>
+use std::fmt::Display;
+
+// 方法1: impl Trait（シンプル）
+fn print_item(item: impl Display) {
+    println!("{}", item);
+}
+
+// 方法2: トレイト境界（ジェネリクス）
+fn print_item2&lt;T: Display&gt;(item: T) {
+    println!("{}", item);
+}
+
+// 方法3: where句（複雑な場合に読みやすい）
+fn print_item3&lt;T&gt;(item: T)
+where
+    T: Display,
+{
+    println!("{}", item);
+}
+</pre>
+
+<h2>複数のトレイト境界</h2>
+<pre>
+use std::fmt::{Debug, Display};
+
+// +で複数のトレイトを要求
+fn print_debug_display&lt;T: Debug + Display&gt;(item: T) {
+    println!("Debug: {:?}", item);
+    println!("Display: {}", item);
+}
+
+// where句を使った場合
+fn complex_function&lt;T, U&gt;(t: T, u: U)
+where
+    T: Display + Clone,
+    U: Clone + Debug,
+{
+    println!("{}", t);
+    println!("{:?}", u);
+}
+</pre>
+
+<h2>条件付きのメソッド実装</h2>
+<pre>
+use std::fmt::Display;
+
+struct Pair&lt;T&gt; {
+    x: T,
+    y: T,
+}
+
+// すべてのTに対するメソッド
+impl&lt;T&gt; Pair&lt;T&gt; {
+    fn new(x: T, y: T) -&gt; Self {
+        Pair { x, y }
+    }
+}
+
+// Display + PartialOrdを実装している型のみ
+impl&lt;T: Display + PartialOrd&gt; Pair&lt;T&gt; {
+    fn cmp_display(&amp;self) {
+        if self.x &gt;= self.y {
+            println!("The largest member is x = {}", self.x);
+        } else {
+            println!("The largest member is y = {}", self.y);
+        }
+    }
+}
+
+fn main() {
+    let pair = Pair::new(5, 10);
+    pair.cmp_display();  // OK: i32はDisplay + PartialOrdを実装
+
+    // struct NoDisplay;
+    // let pair2 = Pair::new(NoDisplay, NoDisplay);
+    // pair2.cmp_display();  // エラー: Displayを実装していない
+}
+</pre>
+
+<h2>ブランケット実装（Blanket Implementation）</h2>
+<pre>
+use std::fmt::Display;
+
+// 任意のDisplay実装型に対してToStringを実装
+// （標準ライブラリで実際に行われている）
+trait MyToString {
+    fn my_to_string(&amp;self) -&gt; String;
+}
+
+impl&lt;T: Display&gt; MyToString for T {
+    fn my_to_string(&amp;self) -&gt; String {
+        format!("{}", self)
+    }
+}
+
+fn main() {
+    let n = 42;
+    println!("{}", n.my_to_string());
+
+    let s = "hello";
+    println!("{}", s.my_to_string());
+}
+</pre>
+
+<h2>関連型（Associated Types）</h2>
+<pre>
+// ジェネリクスではなく関連型を使うパターン
+trait Iterator {
+    type Item;  // 関連型
+
+    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt;;
+}
+
+struct Counter {
+    count: u32,
+}
+
+impl Iterator for Counter {
+    type Item = u32;  // 関連型を具体化
+
+    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt; {
+        if self.count &lt; 5 {
+            self.count += 1;
+            Some(self.count)
+        } else {
+            None
+        }
+    }
+}
+</pre>
+
+<h2>スーパートレイト</h2>
+<pre>
+use std::fmt::Display;
+
+// Displayを要求するトレイト
+trait PrettyPrint: Display {
+    fn pretty_print(&amp;self) {
+        println!("=== {} ===", self);  // Displayを使える
+    }
+}
+
+// Displayを実装した型のみPrettyPrintを実装できる
+impl PrettyPrint for i32 {}
+impl PrettyPrint for String {}
+
+fn main() {
+    42.pretty_print();
+    String::from("hello").pretty_print();
+}
+</pre>
+
+<h2>Sizedトレイト</h2>
+<pre>
+// デフォルトでT: Sizedが暗黙的につく
+fn generic&lt;T&gt;(t: T) {
+    // Tはコンパイル時にサイズが決まる
+}
+
+// サイズ不定の型を許可する場合
+fn generic_unsized&lt;T: ?Sized&gt;(t: &amp;T) {
+    // Tは str や [i32] などサイズ不定でもOK
+}
+
+fn main() {
+    let s = "hello";
+    generic_unsized(s);  // &amp;str（strはサイズ不定）
+}
+</pre>
+
+<h2>トレイトオブジェクト（動的ディスパッチ）</h2>
+<pre>
+trait Draw {
+    fn draw(&amp;self);
+}
+
+struct Circle {
+    radius: f64,
+}
+
+struct Square {
+    side: f64,
+}
+
+impl Draw for Circle {
+    fn draw(&amp;self) {
+        println!("Drawing circle with radius {}", self.radius);
+    }
+}
+
+impl Draw for Square {
+    fn draw(&amp;self) {
+        println!("Drawing square with side {}", self.side);
+    }
+}
+
+fn main() {
+    // トレイトオブジェクト: 動的ディスパッチ
+    let shapes: Vec&lt;Box&lt;dyn Draw&gt;&gt; = vec![
+        Box::new(Circle { radius: 1.0 }),
+        Box::new(Square { side: 2.0 }),
+    ];
+
+    for shape in shapes {
+        shape.draw();
+    }
+}
+</pre>
+
+<h2>静的ディスパッチ vs 動的ディスパッチ</h2>
+<table border="1" cellpadding="5">
+<tr><th>種類</th><th>構文</th><th>特徴</th></tr>
+<tr><td>静的</td><td>impl Trait / &lt;T: Trait&gt;</td><td>高速、コード膨張</td></tr>
+<tr><td>動的</td><td>dyn Trait</td><td>柔軟、実行時コスト</td></tr>
+</table>
+
+<pre>
+trait Speak {
+    fn speak(&amp;self);
+}
+
+// 静的ディスパッチ（コンパイル時に型が決まる）
+fn speak_static(speaker: &amp;impl Speak) {
+    speaker.speak();
+}
+
+// 動的ディスパッチ（実行時に型が決まる）
+fn speak_dynamic(speaker: &amp;dyn Speak) {
+    speaker.speak();
+}
+</pre>
+
+<h2>エクササイズ 6.3</h2>
+<ol>
+    <li>Display + Cloneを要求する関数を作成し、引数を2回出力</li>
+    <li>Drawトレイトを定義し、Circle, Rectangle, Triangleに実装。Vec&lt;Box&lt;dyn Draw&gt;&gt;で全て描画</li>
+    <li>条件付き実装：PartialOrdを実装した型のみにmax()メソッドを実装するPair構造体を作成</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+use std::fmt::Display;
+
+// 1. Display + Clone
+fn print_twice&lt;T: Display + Clone&gt;(item: T) {
+    println!("First: {}", item);
+    let cloned = item.clone();
+    println!("Second: {}", cloned);
+}
+
+fn main() {
+    print_twice("hello");
+    print_twice(42);
+}
+
+// 2. Drawトレイト
+trait Draw {
+    fn draw(&amp;self);
+}
+
+struct Circle { radius: f64 }
+struct Rectangle { width: f64, height: f64 }
+struct Triangle { base: f64, height: f64 }
+
+impl Draw for Circle {
+    fn draw(&amp;self) {
+        println!("Circle (radius: {})", self.radius);
+    }
+}
+
+impl Draw for Rectangle {
+    fn draw(&amp;self) {
+        println!("Rectangle ({}x{})", self.width, self.height);
+    }
+}
+
+impl Draw for Triangle {
+    fn draw(&amp;self) {
+        println!("Triangle (base: {}, height: {})", self.base, self.height);
+    }
+}
+
+fn main() {
+    let shapes: Vec&lt;Box&lt;dyn Draw&gt;&gt; = vec![
+        Box::new(Circle { radius: 1.0 }),
+        Box::new(Rectangle { width: 2.0, height: 3.0 }),
+        Box::new(Triangle { base: 4.0, height: 2.0 }),
+    ];
+
+    for shape in shapes {
+        shape.draw();
+    }
+}
+
+// 3. 条件付き実装
+struct Pair&lt;T&gt; {
+    first: T,
+    second: T,
+}
+
+impl&lt;T&gt; Pair&lt;T&gt; {
+    fn new(first: T, second: T) -&gt; Self {
+        Pair { first, second }
+    }
+}
+
+impl&lt;T: PartialOrd&gt; Pair&lt;T&gt; {
+    fn max(&amp;self) -&gt; &amp;T {
+        if self.first &gt;= self.second {
+            &amp;self.first
+        } else {
+            &amp;self.second
+        }
+    }
+}
+
+fn main() {
+    let pair = Pair::new(10, 20);
+    println!("Max: {}", pair.max());
+
+    let pair2 = Pair::new("apple", "banana");
+    println!("Max: {}", pair2.max());
+}
+</pre>
+
+<hr>
+<p><a href="ch06_02_generics.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch07_01_box.html">次へ: 7.1 Box&lt;T&gt; &gt;&gt;</a></p>
+</body>
+</html>

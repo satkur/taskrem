@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>3.3 文字列（Stringと&amp;str） - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>3.3 文字列（Stringと&amp;str）</h1>
+
+<h2>Rustの文字列は2種類</h2>
+<table border="1" cellpadding="5">
+<tr><th>型</th><th>説明</th><th>C++相当</th><th>Kotlin相当</th></tr>
+<tr><td><code>String</code></td><td>ヒープ確保、可変、所有権あり</td><td>std::string</td><td>StringBuilder</td></tr>
+<tr><td><code>&amp;str</code></td><td>文字列スライス、不変、参照</td><td>string_view</td><td>String（immutable）</td></tr>
+</table>
+
+<h2>基本</h2>
+<pre>
+fn main() {
+    // 文字列リテラルは &amp;str 型
+    let s1: &amp;str = "Hello";
+
+    // String型の作成
+    let s2: String = String::from("Hello");
+    let s3: String = "Hello".to_string();
+    let s4: String = String::new();  // 空のString
+
+    // &amp;str から String へ
+    let s5: String = s1.to_string();
+
+    // String から &amp;str へ
+    let s6: &amp;str = &amp;s2;
+    let s7: &amp;str = s2.as_str();
+
+    println!("{} {} {}", s1, s2, s3);
+}
+</pre>
+
+<h2>文字列の連結</h2>
+<pre>
+fn main() {
+    // +演算子（左辺はString、右辺は&amp;str）
+    let s1 = String::from("Hello, ");
+    let s2 = String::from("World!");
+    let s3 = s1 + &amp;s2;  // s1はムーブされる
+    // println!("{}", s1);  // エラー: s1は使えない
+    println!("{}", s3);
+
+    // format!マクロ（所有権を奪わない、推奨）
+    let s4 = String::from("Hello");
+    let s5 = String::from("World");
+    let s6 = format!("{}, {}!", s4, s5);
+    println!("{}", s6);
+    println!("{} {}", s4, s5);  // まだ使える
+
+    // push_str / push
+    let mut s7 = String::from("Hello");
+    s7.push_str(", World");
+    s7.push('!');
+    println!("{}", s7);
+}
+</pre>
+
+<h2>文字列の長さ</h2>
+<pre>
+fn main() {
+    let s = "Hello, 世界!";
+
+    // バイト数
+    println!("bytes: {}", s.len());  // 15
+
+    // 文字数
+    println!("chars: {}", s.chars().count());  // 9
+
+    // UTF-8について：日本語は1文字3バイト
+    let ja = "あ";
+    println!("'あ' bytes: {}", ja.len());  // 3
+    println!("'あ' chars: {}", ja.chars().count());  // 1
+}
+</pre>
+
+<h2>文字列のスライス</h2>
+<pre>
+fn main() {
+    let s = String::from("Hello, World!");
+
+    // バイト位置でスライス（UTF-8境界に注意！）
+    let hello = &amp;s[0..5];    // "Hello"
+    let world = &amp;s[7..12];   // "World"
+    println!("{} {}", hello, world);
+
+    // 日本語の場合、バイト境界に注意
+    let ja = "こんにちは";
+    // let slice = &amp;ja[0..2];  // panic! UTF-8の途中で切れる
+    let slice = &amp;ja[0..3];     // "こ"（3バイト）
+    println!("{}", slice);
+}
+</pre>
+
+<h2>文字のイテレーション</h2>
+<pre>
+fn main() {
+    let s = "Hello, 世界!";
+
+    // 文字単位でイテレーション
+    for c in s.chars() {
+        println!("{}", c);
+    }
+
+    // バイト単位
+    for b in s.bytes() {
+        println!("{}", b);
+    }
+
+    // インデックス付き（文字位置）
+    for (i, c) in s.chars().enumerate() {
+        println!("[{}] = '{}'", i, c);
+    }
+}
+</pre>
+
+<h2>便利なメソッド</h2>
+<pre>
+fn main() {
+    let s = "  Hello, World!  ";
+
+    // トリム
+    println!("'{}'", s.trim());  // 'Hello, World!'
+
+    // 大文字/小文字変換
+    println!("{}", "hello".to_uppercase());  // HELLO
+    println!("{}", "HELLO".to_lowercase());  // hello
+
+    // 含むか
+    println!("{}", s.contains("World"));  // true
+
+    // 始まり/終わり
+    println!("{}", s.trim().starts_with("Hello"));  // true
+    println!("{}", s.trim().ends_with("!"));        // true
+
+    // 置換
+    let s2 = "foo bar foo";
+    println!("{}", s2.replace("foo", "baz"));  // baz bar baz
+
+    // 分割
+    let s3 = "a,b,c,d";
+    let parts: Vec&lt;&amp;str&gt; = s3.split(',').collect();
+    println!("{:?}", parts);  // ["a", "b", "c", "d"]
+
+    // 行で分割
+    let s4 = "line1\nline2\nline3";
+    for line in s4.lines() {
+        println!("{}", line);
+    }
+}
+</pre>
+
+<h2>文字列の検索</h2>
+<pre>
+fn main() {
+    let s = "Hello, World!";
+
+    // 位置を検索
+    match s.find("World") {
+        Some(pos) =&gt; println!("Found at position {}", pos),
+        None =&gt; println!("Not found"),
+    }
+
+    // 複数の一致を見つける
+    let s2 = "abcabc";
+    for (i, _) in s2.match_indices("bc") {
+        println!("Found 'bc' at {}", i);
+    }
+}
+</pre>
+
+<h2>文字列から数値への変換</h2>
+<pre>
+fn main() {
+    let s = "42";
+
+    // parse()（型推論または明示が必要）
+    let n: i32 = s.parse().unwrap();
+    let n2 = s.parse::&lt;i32&gt;().unwrap();
+
+    // エラーハンドリング
+    let s2 = "not a number";
+    match s2.parse::&lt;i32&gt;() {
+        Ok(n) =&gt; println!("Parsed: {}", n),
+        Err(e) =&gt; println!("Error: {}", e),
+    }
+
+    // 数値から文字列
+    let n3 = 123;
+    let s3 = n3.to_string();
+    let s4 = format!("{}", n3);
+    println!("{} {}", s3, s4);
+}
+</pre>
+
+<h2>関数の引数としての文字列</h2>
+<pre>
+// &amp;strを受け取ると、Stringも&amp;strも渡せる（推奨）
+fn print_greeting(name: &amp;str) {
+    println!("Hello, {}!", name);
+}
+
+// Stringを受け取ると所有権が移動する
+fn take_ownership(s: String) {
+    println!("{}", s);
+}
+
+fn main() {
+    let s1 = String::from("World");
+    let s2 = "Rust";
+
+    print_greeting(&amp;s1);  // String -&gt; &amp;str（自動変換）
+    print_greeting(s2);    // &amp;str
+
+    take_ownership(s1);
+    // println!("{}", s1);  // エラー: s1はムーブされた
+}
+</pre>
+
+<h2>エクササイズ 3.3</h2>
+<ol>
+    <li>カンマ区切りの数値文字列を受け取り、合計を返す関数を作成（例: "1,2,3,4,5" -&gt; 15）</li>
+    <li>文字列内の単語数をカウントする関数を作成（スペース区切り）</li>
+    <li>文字列を逆順にした新しいStringを返す関数を作成</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+fn sum_csv(s: &amp;str) -&gt; i32 {
+    s.split(',')
+        .filter_map(|x| x.trim().parse::&lt;i32&gt;().ok())
+        .sum()
+}
+
+fn word_count(s: &amp;str) -&gt; usize {
+    s.split_whitespace().count()
+}
+
+fn reverse_string(s: &amp;str) -&gt; String {
+    s.chars().rev().collect()
+}
+
+fn main() {
+    // 1. CSV合計
+    println!("sum: {}", sum_csv("1,2,3,4,5"));  // 15
+    println!("sum: {}", sum_csv("10, 20, 30"));  // 60
+
+    // 2. 単語数
+    println!("words: {}", word_count("Hello World Rust"));  // 3
+    println!("words: {}", word_count("  multiple   spaces  "));  // 2
+
+    // 3. 逆順
+    println!("reversed: {}", reverse_string("Hello"));  // olleH
+    println!("reversed: {}", reverse_string("こんにちは"));  // はちにんこ
+}
+</pre>
+
+<hr>
+<p><a href="ch03_02_vec.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch03_04_hashmap.html">次へ: 3.4 HashMap &gt;&gt;</a></p>
+</body>
+</html>

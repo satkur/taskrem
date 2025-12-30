@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>7.3 static変数と定数 - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>7.3 static変数と定数</h1>
+
+<h2>C++/Kotlinとの比較</h2>
+<table border="1" cellpadding="5">
+<tr><th>概念</th><th>C++</th><th>Kotlin</th><th>Rust</th></tr>
+<tr><td>コンパイル時定数</td><td>constexpr</td><td>const val</td><td>const</td></tr>
+<tr><td>静的変数</td><td>static</td><td>companion object</td><td>static</td></tr>
+<tr><td>遅延初期化</td><td>-</td><td>lazy</td><td>lazy_static / OnceCell</td></tr>
+</table>
+
+<h2>const（コンパイル時定数）</h2>
+<pre>
+// 型注釈必須、コンパイル時に評価される
+const MAX_POINTS: u32 = 100_000;
+const PI: f64 = 3.14159265359;
+const GREETING: &amp;str = "Hello, Rust!";
+
+// const関数（コンパイル時に評価可能）
+const fn square(x: i32) -&gt; i32 {
+    x * x
+}
+
+const SQUARED: i32 = square(5);  // 25
+
+fn main() {
+    println!("MAX_POINTS: {}", MAX_POINTS);
+    println!("SQUARED: {}", SQUARED);
+
+    // constはインライン展開される（アドレスを持たない）
+}
+</pre>
+
+<h2>static（静的変数）</h2>
+<pre>
+// 固定アドレスを持つグローバル変数
+static HELLO_WORLD: &amp;str = "Hello, world!";
+static mut COUNTER: u32 = 0;  // 可変static（unsafeが必要）
+
+fn main() {
+    println!("{}", HELLO_WORLD);
+
+    // 可変staticへのアクセスはunsafe
+    unsafe {
+        COUNTER += 1;
+        println!("COUNTER: {}", COUNTER);
+    }
+}
+</pre>
+
+<h2>constとstaticの違い</h2>
+<table border="1" cellpadding="5">
+<tr><th>特徴</th><th>const</th><th>static</th></tr>
+<tr><td>メモリ配置</td><td>インライン展開</td><td>固定アドレス</td></tr>
+<tr><td>可変性</td><td>不変のみ</td><td>mutで可変（unsafe必須）</td></tr>
+<tr><td>ライフタイム</td><td>-</td><td>'static</td></tr>
+<tr><td>用途</td><td>真の定数</td><td>グローバル状態</td></tr>
+</table>
+
+<h2>lazy_staticクレート（遅延初期化）</h2>
+<pre>
+// Cargo.tomlに追加: lazy_static = "1.4"
+
+use lazy_static::lazy_static;
+use std::collections::HashMap;
+
+lazy_static! {
+    // プログラム起動時に一度だけ初期化
+    static ref HASHMAP: HashMap&lt;&amp;'static str, u32&gt; = {
+        let mut m = HashMap::new();
+        m.insert("foo", 1);
+        m.insert("bar", 2);
+        m
+    };
+
+    static ref COUNT: u32 = {
+        println!("Initializing COUNT");
+        42
+    };
+}
+
+fn main() {
+    println!("HASHMAP: {:?}", *HASHMAP);
+    println!("COUNT: {}", *COUNT);
+    println!("COUNT again: {}", *COUNT);  // 再初期化されない
+}
+</pre>
+
+<h2>OnceCell / OnceLock（標準ライブラリ）</h2>
+<pre>
+use std::sync::OnceLock;
+
+// グローバルな遅延初期化
+static CONFIG: OnceLock&lt;String&gt; = OnceLock::new();
+
+fn get_config() -&gt; &amp;'static String {
+    CONFIG.get_or_init(|| {
+        println!("Loading config...");
+        String::from("default_config")
+    })
+}
+
+fn main() {
+    println!("Config: {}", get_config());
+    println!("Config: {}", get_config());  // 再初期化されない
+}
+</pre>
+
+<h2>スレッドローカル（thread_local!）</h2>
+<pre>
+use std::cell::RefCell;
+use std::thread;
+
+thread_local! {
+    static COUNTER: RefCell&lt;u32&gt; = RefCell::new(0);
+}
+
+fn main() {
+    COUNTER.with(|c| {
+        *c.borrow_mut() += 1;
+        println!("Main thread: {}", c.borrow());
+    });
+
+    let handle = thread::spawn(|| {
+        COUNTER.with(|c| {
+            *c.borrow_mut() += 10;
+            println!("Other thread: {}", c.borrow());
+        });
+    });
+
+    handle.join().unwrap();
+
+    COUNTER.with(|c| {
+        println!("Main thread again: {}", c.borrow());  // 1（スレッドごとに独立）
+    });
+}
+</pre>
+
+<h2>アトミック型（スレッドセーフなstatic）</h2>
+<pre>
+use std::sync::atomic::{AtomicU32, Ordering};
+
+static COUNTER: AtomicU32 = AtomicU32::new(0);
+
+fn main() {
+    use std::thread;
+
+    let mut handles = vec![];
+
+    for _ in 0..10 {
+        let handle = thread::spawn(|| {
+            for _ in 0..100 {
+                COUNTER.fetch_add(1, Ordering::SeqCst);
+            }
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    println!("COUNTER: {}", COUNTER.load(Ordering::SeqCst));  // 1000
+}
+</pre>
+
+<h2>設定パターン（実践的な例）</h2>
+<pre>
+use std::sync::OnceLock;
+
+#[derive(Debug)]
+struct Config {
+    database_url: String,
+    max_connections: u32,
+}
+
+static CONFIG: OnceLock&lt;Config&gt; = OnceLock::new();
+
+fn init_config(database_url: String, max_connections: u32) {
+    CONFIG.set(Config {
+        database_url,
+        max_connections,
+    }).expect("Config already initialized");
+}
+
+fn get_config() -&gt; &amp;'static Config {
+    CONFIG.get().expect("Config not initialized")
+}
+
+fn main() {
+    // アプリケーション起動時に初期化
+    init_config(
+        String::from("postgres://localhost/mydb"),
+        10,
+    );
+
+    // どこからでもアクセス可能
+    let config = get_config();
+    println!("{:?}", config);
+}
+</pre>
+
+<h2>定数配列とconst fn</h2>
+<pre>
+const fn factorial(n: u32) -&gt; u32 {
+    match n {
+        0 | 1 =&gt; 1,
+        _ =&gt; n * factorial(n - 1),
+    }
+}
+
+// コンパイル時に計算されるルックアップテーブル
+const FACTORIALS: [u32; 10] = [
+    factorial(0), factorial(1), factorial(2), factorial(3), factorial(4),
+    factorial(5), factorial(6), factorial(7), factorial(8), factorial(9),
+];
+
+fn main() {
+    println!("5! = {}", FACTORIALS[5]);  // 120
+}
+</pre>
+
+<h2>エクササイズ 7.3</h2>
+<ol>
+    <li>const fnで1から10までの合計を計算し、constとして定義</li>
+    <li>OnceLockを使って、環境変数から設定を読み込むグローバル設定を実装</li>
+    <li>AtomicU64を使って、スレッドセーフなIDジェネレータを実装</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+// 1. const fnで合計
+const fn sum_to_n(n: u32) -&gt; u32 {
+    let mut sum = 0;
+    let mut i = 1;
+    while i &lt;= n {
+        sum += i;
+        i += 1;
+    }
+    sum
+}
+
+const SUM_1_TO_10: u32 = sum_to_n(10);
+
+fn main() {
+    println!("Sum 1 to 10: {}", SUM_1_TO_10);  // 55
+}
+
+// 2. OnceLockで設定
+use std::sync::OnceLock;
+
+#[derive(Debug)]
+struct AppConfig {
+    debug: bool,
+    port: u16,
+}
+
+static CONFIG: OnceLock&lt;AppConfig&gt; = OnceLock::new();
+
+fn get_config() -&gt; &amp;'static AppConfig {
+    CONFIG.get_or_init(|| {
+        let debug = std::env::var("DEBUG")
+            .map(|v| v == "1" || v == "true")
+            .unwrap_or(false);
+        let port = std::env::var("PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(8080);
+
+        AppConfig { debug, port }
+    })
+}
+
+fn main() {
+    let config = get_config();
+    println!("{:?}", config);
+}
+
+// 3. IDジェネレータ
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static NEXT_ID: AtomicU64 = AtomicU64::new(1);
+
+fn generate_id() -&gt; u64 {
+    NEXT_ID.fetch_add(1, Ordering::SeqCst)
+}
+
+fn main() {
+    use std::thread;
+
+    let mut handles = vec![];
+
+    for _ in 0..5 {
+        let handle = thread::spawn(|| {
+            let id = generate_id();
+            println!("Generated ID: {}", id);
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    println!("Next ID will be: {}", generate_id());
+}
+</pre>
+
+<hr>
+<h2>チュートリアル完了</h2>
+<p>お疲れ様でした！このチュートリアルでは以下を学びました：</p>
+<ul>
+    <li>基本文法（変数、制御構文、関数）</li>
+    <li>構造体とメソッド、モジュール</li>
+    <li>コレクション（配列、Vec、String、HashMap）</li>
+    <li>所有権、借用、ライフタイム（Rust最重要概念）</li>
+    <li>enum、Option、Result、パターンマッチング</li>
+    <li>トレイトとジェネリクス</li>
+    <li>スマートポインタ（Box, Rc, Arc）とstatic</li>
+</ul>
+
+<p><strong>次のステップ：</strong></p>
+<ul>
+    <li>公式ドキュメント: <a href="https://doc.rust-lang.org/book/">The Rust Programming Language</a></li>
+    <li>練習問題: <a href="https://rustlings.cool/">Rustlings</a></li>
+    <li>実践: <a href="https://github.com/rust-unofficial/awesome-rust">Awesome Rust</a></li>
+</ul>
+
+<hr>
+<p><a href="ch07_02_rc.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a></p>
+</body>
+</html>

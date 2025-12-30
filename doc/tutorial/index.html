@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Rust入門 - C++/Kotlinプログラマー向け</title>
+</head>
+<body>
+<h1>Rust入門 - C++/Kotlinプログラマー向けクイックガイド</h1>
+<p>このチュートリアルは、C++やKotlinの経験があるプログラマーがRustの要点を素早く理解するためのエクササイズ中心のカリキュラムです。</p>
+
+<hr>
+
+<h2>目次</h2>
+
+<h3>第1章: 基本文法</h3>
+<ul>
+    <li><a href="ch01_01_hello.html">1.1 Hello Worldとエントリポイント</a></li>
+    <li><a href="ch01_02_variables.html">1.2 変数と型（let, mut, 型推論）</a></li>
+    <li><a href="ch01_03_control.html">1.3 制御構文（if, for, while, loop, match）</a></li>
+    <li><a href="ch01_04_args.html">1.4 コマンドライン引数</a></li>
+</ul>
+
+<h3>第2章: 関数と構造体</h3>
+<ul>
+    <li><a href="ch02_01_functions.html">2.1 関数定義</a></li>
+    <li><a href="ch02_02_structs.html">2.2 構造体（struct）</a></li>
+    <li><a href="ch02_03_impl.html">2.3 implブロックとメソッド</a></li>
+    <li><a href="ch02_04_modules.html">2.4 カプセル化（pub修飾子、モジュール）</a></li>
+</ul>
+
+<h3>第3章: コレクションと文字列</h3>
+<ul>
+    <li><a href="ch03_01_arrays.html">3.1 配列とスライス</a></li>
+    <li><a href="ch03_02_vec.html">3.2 Vec（動的配列）</a></li>
+    <li><a href="ch03_03_strings.html">3.3 文字列（Stringと&amp;str）</a></li>
+    <li><a href="ch03_04_hashmap.html">3.4 HashMap</a></li>
+</ul>
+
+<h3>第4章: 所有権と借用【重要】</h3>
+<ul>
+    <li><a href="ch04_01_ownership.html">4.1 所有権の基本</a></li>
+    <li><a href="ch04_02_borrowing.html">4.2 参照と借用</a></li>
+    <li><a href="ch04_03_lifetimes.html">4.3 ライフタイム入門</a></li>
+</ul>
+
+<h3>第5章: 列挙型とパターンマッチング</h3>
+<ul>
+    <li><a href="ch05_01_enum.html">5.1 enum</a></li>
+    <li><a href="ch05_02_option.html">5.2 Option型</a></li>
+    <li><a href="ch05_03_result.html">5.3 Result型とエラーハンドリング</a></li>
+    <li><a href="ch05_04_patterns.html">5.4 パターンマッチング詳細</a></li>
+</ul>
+
+<h3>第6章: トレイトとジェネリクス</h3>
+<ul>
+    <li><a href="ch06_01_traits.html">6.1 トレイト（インターフェース相当）</a></li>
+    <li><a href="ch06_02_generics.html">6.2 ジェネリクス</a></li>
+    <li><a href="ch06_03_bounds.html">6.3 トレイト境界</a></li>
+</ul>
+
+<h3>第7章: スマートポインタとstatic</h3>
+<ul>
+    <li><a href="ch07_01_box.html">7.1 Box&lt;T&gt;</a></li>
+    <li><a href="ch07_02_rc.html">7.2 Rc&lt;T&gt;とArc&lt;T&gt;</a></li>
+    <li><a href="ch07_03_static.html">7.3 static変数と定数</a></li>
+</ul>
+
+<hr>
+<h2>C++/Kotlin対応表（クイックリファレンス）</h2>
+<table border="1" cellpadding="5">
+<tr><th>概念</th><th>C++</th><th>Kotlin</th><th>Rust</th></tr>
+<tr><td>クラス定義</td><td>class</td><td>class</td><td>struct + impl</td></tr>
+<tr><td>インターフェース</td><td>純粋仮想クラス</td><td>interface</td><td>trait</td></tr>
+<tr><td>ポインタ</td><td>*, &amp;, unique_ptr</td><td>-</td><td>&amp;, Box, Rc, Arc</td></tr>
+<tr><td>null安全</td><td>optional</td><td>?（nullable）</td><td>Option&lt;T&gt;</td></tr>
+<tr><td>例外処理</td><td>try/catch</td><td>try/catch</td><td>Result&lt;T,E&gt;</td></tr>
+<tr><td>パターンマッチ</td><td>-</td><td>when</td><td>match</td></tr>
+<tr><td>静的変数</td><td>static</td><td>companion object</td><td>static / const</td></tr>
+<tr><td>メモリ管理</td><td>手動/RAII</td><td>GC</td><td>所有権システム</td></tr>
+</table>
+
+<hr>
+<p><em>生成日: 2024</em></p>
+</body>
+</html>

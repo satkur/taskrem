@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>5.4 パターンマッチング詳細 - Rust入門</title>
+</head>
+<body>
+<p><a href="index.html">目次に戻る</a></p>
+<h1>5.4 パターンマッチング詳細</h1>
+
+<h2>パターンが使える場所</h2>
+<ul>
+    <li>match式</li>
+    <li>if let</li>
+    <li>while let</li>
+    <li>for ループ</li>
+    <li>let 文</li>
+    <li>関数の引数</li>
+</ul>
+
+<h2>リテラルパターン</h2>
+<pre>
+fn main() {
+    let x = 1;
+
+    match x {
+        1 =&gt; println!("one"),
+        2 =&gt; println!("two"),
+        3 =&gt; println!("three"),
+        _ =&gt; println!("other"),
+    }
+}
+</pre>
+
+<h2>変数パターン</h2>
+<pre>
+fn main() {
+    let x = Some(5);
+
+    match x {
+        Some(value) =&gt; println!("value = {}", value),  // valueに束縛
+        None =&gt; println!("none"),
+    }
+
+    // 注意: matchの中で同名の変数を使うとシャドーイングされる
+    let x = 1;
+    let y = 2;
+
+    match x {
+        1 =&gt; println!("one"),
+        y =&gt; println!("matched y = {}", y),  // これはパターン変数y、外側のyとは別
+    }
+}
+</pre>
+
+<h2>複数のパターン（|）</h2>
+<pre>
+fn main() {
+    let x = 1;
+
+    match x {
+        1 | 2 =&gt; println!("one or two"),
+        3 | 4 | 5 =&gt; println!("three, four, or five"),
+        _ =&gt; println!("other"),
+    }
+}
+</pre>
+
+<h2>範囲パターン（..=）</h2>
+<pre>
+fn main() {
+    let x = 5;
+
+    match x {
+        1..=5 =&gt; println!("one through five"),
+        6..=10 =&gt; println!("six through ten"),
+        _ =&gt; println!("other"),
+    }
+
+    // 文字にも使える
+    let c = 'c';
+
+    match c {
+        'a'..='j' =&gt; println!("early letter"),
+        'k'..='z' =&gt; println!("late letter"),
+        _ =&gt; println!("something else"),
+    }
+}
+</pre>
+
+<h2>構造体の分解</h2>
+<pre>
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+fn main() {
+    let p = Point { x: 0, y: 7 };
+
+    // 完全な分解
+    let Point { x, y } = p;
+    println!("x = {}, y = {}", x, y);
+
+    // 別名をつける
+    let Point { x: a, y: b } = p;
+    println!("a = {}, b = {}", a, b);
+
+    // matchで分解
+    match p {
+        Point { x: 0, y } =&gt; println!("On y-axis at {}", y),
+        Point { x, y: 0 } =&gt; println!("On x-axis at {}", x),
+        Point { x, y } =&gt; println!("At ({}, {})", x, y),
+    }
+}
+</pre>
+
+<h2>enumの分解</h2>
+<pre>
+enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+    ChangeColor(i32, i32, i32),
+}
+
+fn main() {
+    let msg = Message::ChangeColor(0, 160, 255);
+
+    match msg {
+        Message::Quit =&gt; println!("Quit"),
+        Message::Move { x, y } =&gt; println!("Move to ({}, {})", x, y),
+        Message::Write(text) =&gt; println!("Text: {}", text),
+        Message::ChangeColor(r, g, b) =&gt; println!("Color: ({}, {}, {})", r, g, b),
+    }
+}
+</pre>
+
+<h2>ネストした構造の分解</h2>
+<pre>
+enum Color {
+    Rgb(i32, i32, i32),
+    Hsv(i32, i32, i32),
+}
+
+enum Message {
+    ChangeColor(Color),
+}
+
+fn main() {
+    let msg = Message::ChangeColor(Color::Rgb(0, 160, 255));
+
+    match msg {
+        Message::ChangeColor(Color::Rgb(r, g, b)) =&gt; {
+            println!("RGB: ({}, {}, {})", r, g, b)
+        }
+        Message::ChangeColor(Color::Hsv(h, s, v)) =&gt; {
+            println!("HSV: ({}, {}, {})", h, s, v)
+        }
+    }
+}
+</pre>
+
+<h2>_（ワイルドカード）</h2>
+<pre>
+fn main() {
+    let x = Some(5);
+
+    // _で値を無視
+    match x {
+        Some(_) =&gt; println!("got something"),
+        None =&gt; println!("got nothing"),
+    }
+
+    let point = (3, 5, 7);
+
+    // 一部だけ取り出す
+    match point {
+        (x, _, z) =&gt; println!("x = {}, z = {}", x, z),
+    }
+
+    // _で始まる変数名（未使用警告を抑制）
+    let _unused = 42;
+}
+</pre>
+
+<h2>..（残りを無視）</h2>
+<pre>
+struct Point3D {
+    x: i32,
+    y: i32,
+    z: i32,
+}
+
+fn main() {
+    let p = Point3D { x: 1, y: 2, z: 3 };
+
+    // 一部だけ使う
+    match p {
+        Point3D { x, .. } =&gt; println!("x = {}", x),
+    }
+
+    let numbers = (2, 4, 8, 16, 32);
+
+    match numbers {
+        (first, .., last) =&gt; println!("first = {}, last = {}", first, last),
+    }
+}
+</pre>
+
+<h2>マッチガード（追加の条件）</h2>
+<pre>
+fn main() {
+    let x = Some(5);
+
+    match x {
+        Some(n) if n &gt; 3 =&gt; println!("greater than 3: {}", n),
+        Some(n) =&gt; println!("not greater than 3: {}", n),
+        None =&gt; println!("none"),
+    }
+
+    let num = Some(4);
+    let is_even = true;
+
+    match num {
+        Some(x) if is_even =&gt; println!("even condition: {}", x),
+        Some(x) =&gt; println!("any: {}", x),
+        None =&gt; (),
+    }
+}
+</pre>
+
+<h2>@束縛（パターンマッチしながら変数に束縛）</h2>
+<pre>
+fn main() {
+    let x = 5;
+
+    match x {
+        n @ 1..=5 =&gt; println!("Got {} in range 1-5", n),
+        n @ 6..=10 =&gt; println!("Got {} in range 6-10", n),
+        n =&gt; println!("Got {} outside ranges", n),
+    }
+
+    enum Message {
+        Hello { id: i32 },
+    }
+
+    let msg = Message::Hello { id: 5 };
+
+    match msg {
+        Message::Hello { id: id_var @ 3..=7 } =&gt; {
+            println!("Found id in range: {}", id_var)
+        }
+        Message::Hello { id: 10..=12 } =&gt; {
+            println!("Found id in another range")
+        }
+        Message::Hello { id } =&gt; println!("Found other id: {}", id),
+    }
+}
+</pre>
+
+<h2>if let と while let</h2>
+<pre>
+fn main() {
+    let x = Some(5);
+
+    // if let（1パターンだけのmatchの簡略形）
+    if let Some(n) = x {
+        println!("n = {}", n);
+    }
+
+    // else付き
+    if let Some(n) = x {
+        println!("n = {}", n);
+    } else {
+        println!("no value");
+    }
+
+    // while let
+    let mut stack = vec![1, 2, 3];
+
+    while let Some(top) = stack.pop() {
+        println!("popped: {}", top);
+    }
+}
+</pre>
+
+<h2>let else（Rust 1.65+）</h2>
+<pre>
+fn process(x: Option&lt;i32&gt;) {
+    // パターンにマッチしなければelseブロック（diverge必須）
+    let Some(n) = x else {
+        println!("No value!");
+        return;
+    };
+
+    println!("Got: {}", n);
+}
+
+fn main() {
+    process(Some(5));
+    process(None);
+}
+</pre>
+
+<h2>エクササイズ 5.4</h2>
+<ol>
+    <li>座標を表す構造体を、x軸上、y軸上、原点、その他に分類するパターンマッチを作成</li>
+    <li>Option&lt;Option&lt;i32&gt;&gt;をパターンマッチで全パターン処理</li>
+    <li>マッチガードを使って、1-100の範囲で偶数か奇数かを判定</li>
+</ol>
+
+<h3>解答例</h3>
+<pre>
+// 1. 座標の分類
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+fn classify_point(p: Point) {
+    match p {
+        Point { x: 0, y: 0 } =&gt; println!("Origin"),
+        Point { x: 0, y } =&gt; println!("On y-axis at y={}", y),
+        Point { x, y: 0 } =&gt; println!("On x-axis at x={}", x),
+        Point { x, y } =&gt; println!("At ({}, {})", x, y),
+    }
+}
+
+fn main() {
+    classify_point(Point { x: 0, y: 0 });
+    classify_point(Point { x: 0, y: 5 });
+    classify_point(Point { x: 3, y: 0 });
+    classify_point(Point { x: 3, y: 4 });
+}
+
+// 2. ネストしたOption
+fn process_nested(opt: Option&lt;Option&lt;i32&gt;&gt;) {
+    match opt {
+        Some(Some(n)) =&gt; println!("Inner value: {}", n),
+        Some(None) =&gt; println!("Outer Some, inner None"),
+        None =&gt; println!("Outer None"),
+    }
+}
+
+fn main() {
+    process_nested(Some(Some(42)));
+    process_nested(Some(None));
+    process_nested(None);
+}
+
+// 3. マッチガード
+fn classify_number(n: i32) {
+    match n {
+        n @ 1..=100 if n % 2 == 0 =&gt; println!("{} is even (1-100)", n),
+        n @ 1..=100 =&gt; println!("{} is odd (1-100)", n),
+        _ =&gt; println!("{} is out of range", n),
+    }
+}
+
+fn main() {
+    classify_number(42);
+    classify_number(33);
+    classify_number(200);
+}
+</pre>
+
+<hr>
+<p><a href="ch05_03_result.html">&lt;&lt; 前へ</a> | <a href="index.html">目次</a> | <a href="ch06_01_traits.html">次へ: 6.1 トレイト &gt;&gt;</a></p>
+</body>
+</html>
