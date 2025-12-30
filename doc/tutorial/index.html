@@ -66,6 +66,42 @@
 </ul>
 
 <hr>
+<h2>演習の進め方</h2>
+
+<h3>フォルダ構成</h3>
+<p><code>tutorial_exercise/</code> フォルダを作成し、章・演習ごとにCargoプロジェクトを作成します。</p>
+<pre>
+tutorial_exercise/
+├── ch01_basics/
+│   ├── ex01_hello/
+│   ├── ex02_variables/
+│   └── ...
+├── ch02_functions/
+└── ...
+</pre>
+
+<h3>演習プロジェクトの作成</h3>
+<pre>
+cd tutorial_exercise/ch01_basics
+cargo new ex01_hello
+cd ex01_hello
+</pre>
+
+<h3>コンパイル・実行</h3>
+<pre>
+cargo check          # 文法・型チェックのみ（高速）
+cargo build          # コンパイル
+cargo run            # コンパイル＋実行
+cargo run -- arg1    # 引数付きで実行
+</pre>
+
+<h3>デバッグ</h3>
+<ul>
+    <li><code>println!("{:?}", value);</code> で変数の値を確認</li>
+    <li>VSCode: rust-analyzer + CodeLLDB 拡張でブレークポイントデバッグ可能</li>
+</ul>
+
+<hr>
 <h2>C++/Kotlin対応表（クイックリファレンス）</h2>
 <table border="1" cellpadding="5">
 <tr><th>概念</th><th>C++</th><th>Kotlin</th><th>Rust</th></tr>
