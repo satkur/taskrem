@@ -68,31 +68,32 @@
 <hr>
 <h2>演習の進め方</h2>
 
-<h3>フォルダ構成</h3>
-<p><code>tutorial_exercise/</code> フォルダを作成し、章・演習ごとにCargoプロジェクトを作成します。</p>
+<h3>セットアップ（最初の1回だけ）</h3>
 <pre>
-tutorial_exercise/
-├── ch01_basics/
-│   ├── ex01_hello/
-│   ├── ex02_variables/
-│   └── ...
-├── ch02_functions/
-└── ...
+cargo new tutorial_exercise
+cd tutorial_exercise
+mkdir src/bin
 </pre>
 
-<h3>演習プロジェクトの作成</h3>
+<h3>フォルダ構成</h3>
+<p><code>src/bin/</code> に各演習のソースファイルを追加していきます。</p>
 <pre>
-cd tutorial_exercise/ch01_basics
-cargo new ex01_hello
-cd ex01_hello
+tutorial_exercise/
+├── Cargo.toml
+└── src/
+    ├── main.rs
+    └── bin/
+        ├── ch01_01_hello.rs
+        ├── ch01_02_variables.rs
+        ├── ch01_03_control.rs
+        └── ...
 </pre>
 
 <h3>コンパイル・実行</h3>
 <pre>
-cargo check          # 文法・型チェックのみ（高速）
-cargo build          # コンパイル
-cargo run            # コンパイル＋実行
-cargo run -- arg1    # 引数付きで実行
+cargo run --bin ch01_01_hello          # 指定した演習を実行
+cargo run --bin ch01_04_args -- arg1   # 引数付きで実行
+cargo check                            # 全体の文法・型チェック（高速）
 </pre>
 
 <h3>デバッグ</h3>
